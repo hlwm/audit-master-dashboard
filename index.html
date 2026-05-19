@@ -1,0 +1,1997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>IT Audit Master Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--s1:#0d1117;--s2:#111820;--s3:#161d28;--border:#1e2a38;--border2:#243040;
+  --blue:#4db8ff;--blue-d:rgba(77,184,255,0.12);--blue-b:rgba(77,184,255,0.28);
+  --green:#3ddc84;--green-d:rgba(61,220,132,0.12);--green-b:rgba(61,220,132,0.28);
+  --amber:#ffb84d;--amber-d:rgba(255,184,77,0.12);--amber-b:rgba(255,184,77,0.28);
+  --red:#ff5c5c;--red-d:rgba(255,92,92,0.12);--red-b:rgba(255,92,92,0.28);
+  --purple:#b07fff;--purple-d:rgba(176,127,255,0.12);--purple-b:rgba(176,127,255,0.28);
+  --teal:#2dd4bf;--teal-d:rgba(45,212,191,0.12);--teal-b:rgba(45,212,191,0.28);
+  --text:#dce8f5;--muted:#4a6080;--muted2:#6a80a0;
+  --font:'Segoe UI','Helvetica Neue',Arial,sans-serif;
+  --mono:'Consolas','Courier New',Courier,monospace;
+  --radius:10px;--radius-lg:16px;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+
+/* ═══ TOPBAR ═══ */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:300}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-mark{width:32px;height:32px;background:linear-gradient(135deg,var(--blue),var(--purple));border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:700;color:#fff}
+.logo-text{font-weight:700;font-size:15px;letter-spacing:-0.3px}
+.logo-text span{color:var(--blue)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.tb-btn{background:var(--s2);border:1px solid var(--border2);color:var(--muted2);padding:6px 14px;border-radius:7px;font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s}
+.tb-btn:hover{border-color:var(--blue);color:var(--blue)}
+.tb-btn.primary{background:var(--blue-d);border-color:var(--blue-b);color:var(--blue)}
+.tb-btn.danger{background:var(--red-d);border-color:var(--red-b);color:var(--red)}
+
+/* ═══ STEPPER NAV ═══ */
+.stepper{display:flex;align-items:center;gap:0;background:var(--s1);border-bottom:1px solid var(--border);padding:0 28px;overflow-x:auto}
+.step-btn{display:flex;align-items:center;gap:10px;padding:14px 20px;cursor:pointer;border:none;background:none;color:var(--muted);font-family:var(--font);font-size:13px;font-weight:500;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;position:relative}
+.step-btn:hover{color:var(--text)}
+.step-btn.active{color:var(--blue);border-bottom-color:var(--blue)}
+.step-btn.done{color:var(--green)}
+.step-btn.done .step-num{background:var(--green-d);border-color:var(--green-b);color:var(--green)}
+.step-btn.active .step-num{background:var(--blue-d);border-color:var(--blue-b);color:var(--blue)}
+.step-num{width:22px;height:22px;border-radius:50%;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:700;flex-shrink:0}
+.step-sep{color:var(--border2);padding:0 4px;font-size:18px}
+
+/* ═══ MAIN CONTENT ═══ */
+.main{padding:28px;max-width:1400px;margin:0 auto}
+.page{display:none}.page.active{display:block}
+
+/* ═══ UPLOAD MODULE CARD ═══ */
+.module-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px;margin-bottom:28px}
+.mod-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;transition:border-color .2s}
+.mod-card.loaded{border-color:var(--green-b)}
+.mod-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.mod-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.mod-icon.blue{background:var(--blue-d);border:1px solid var(--blue-b)}
+.mod-icon.green{background:var(--green-d);border:1px solid var(--green-b)}
+.mod-icon.amber{background:var(--amber-d);border:1px solid var(--amber-b)}
+.mod-title{font-weight:600;font-size:15px}
+.mod-sub{font-size:12px;color:var(--muted2);margin-top:2px}
+.mod-status{margin-left:auto;font-size:11px;font-weight:600;font-family:var(--mono)}
+.mod-status.pending{color:var(--muted)}
+.mod-status.ok{color:var(--green)}
+.drop-zone{border:2px dashed var(--border2);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--s2)}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--blue);background:var(--blue-d)}
+.drop-zone.loaded{border-color:var(--green-b);background:var(--green-d)}
+.dz-icon{font-size:24px;margin-bottom:8px}
+.dz-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px}
+.dz-sub{font-size:11px;color:var(--muted2)}
+.files-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{background:var(--s3);border:1px solid var(--border2);border-radius:20px;padding:4px 10px;font-size:11px;display:flex;align-items:center;gap:6px;color:var(--text)}
+.chip .chip-del{background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0}
+.chip.ref{border-color:var(--amber-b);color:var(--amber)}
+
+/* ═══ ACTION BAR ═══ */
+.action-bar{display:flex;align-items:center;justify-content:space-between;background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:24px}
+.action-bar-info{font-size:13px;color:var(--muted2)}
+.action-bar-info strong{color:var(--text)}
+.btn-row{display:flex;gap:8px}
+.btn{background:var(--s2);border:1px solid var(--border2);color:var(--muted2);padding:8px 18px;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
+.btn:hover{border-color:var(--blue);color:var(--blue)}
+.btn.primary{background:var(--blue-d);border-color:var(--blue-b);color:var(--blue)}
+.btn.primary:hover{background:var(--blue);color:#fff}
+.btn.green{background:var(--green-d);border-color:var(--green-b);color:var(--green)}
+.btn.amber{background:var(--amber-d);border-color:var(--amber-b);color:var(--amber)}
+.btn.red{background:var(--red-d);border-color:var(--red-b);color:var(--red)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ═══ OVERVIEW ═══ */
+.overview-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.overview-title{font-size:22px;font-weight:700;letter-spacing:-0.5px}
+.overview-sub{font-size:13px;color:var(--muted2);margin-top:3px}
+.audit-date{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:5px 12px}
+
+/* Traffic lights */
+.traffic-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px}
+.traffic-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.traffic-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.traffic-card.green::before{background:var(--green)}
+.traffic-card.amber::before{background:var(--amber)}
+.traffic-card.red::before{background:var(--red)}
+.traffic-card.grey::before{background:var(--muted)}
+.traffic-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+.tc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+.tc-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px}
+.tc-badge{font-size:10px;font-weight:700;font-family:var(--mono);letter-spacing:.5px;padding:3px 9px;border-radius:4px}
+.badge-green{background:var(--green-d);border:1px solid var(--green-b);color:var(--green)}
+.badge-amber{background:var(--amber-d);border:1px solid var(--amber-b);color:var(--amber)}
+.badge-red{background:var(--red-d);border:1px solid var(--red-b);color:var(--red)}
+.badge-grey{background:var(--s2);border:1px solid var(--border);color:var(--muted)}
+.tc-name{font-size:13px;font-weight:600;margin-bottom:6px}
+.tc-big{font-size:28px;font-weight:700;font-family:var(--mono);line-height:1;letter-spacing:-0.5px}
+.tc-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.tc-kpi-item{font-size:11px;color:var(--muted2)}
+.tc-kpi-val{font-size:15px;font-weight:600;font-family:var(--mono);display:block;margin-top:1px}
+
+/* KPI row */
+.kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:28px}
+.kpi{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;cursor:pointer;transition:all .2s}
+.kpi:hover{border-color:var(--border2)}
+.kpi[onclick]{cursor:pointer}
+.kpi[onclick]:hover{border-color:var(--blue);transform:translateY(-1px)}
+.kpi-label{font-size:11px;color:var(--muted2);margin-bottom:6px;font-weight:500}
+.kpi-val{font-size:28px;font-weight:700;font-family:var(--mono);letter-spacing:-1px;line-height:1.1}
+.kpi-sub{font-size:10px;color:var(--muted);margin-top:3px}
+.kpi.blue .kpi-val{color:var(--blue)}
+.kpi.green .kpi-val{color:var(--green)}
+.kpi.amber .kpi-val{color:var(--amber)}
+.kpi.red .kpi-val{color:var(--red)}
+.kpi.purple .kpi-val{color:var(--purple)}
+
+/* ═══ NAV TABS (inside modules) ═══ */
+.nav-tabs{display:flex;gap:2px;background:var(--s2);border:1px solid var(--border);border-radius:var(--radius);padding:4px;margin-bottom:20px;flex-wrap:wrap}
+.tab{background:none;border:none;color:var(--muted2);padding:8px 16px;border-radius:7px;font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{background:var(--s3);color:var(--text);border:1px solid var(--border2)}
+
+/* ═══ TABLE ═══ */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius)}
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{background:var(--s2);padding:10px 12px;text-align:left;font-weight:600;color:var(--muted2);border-bottom:1px solid var(--border);white-space:nowrap;font-size:11px;letter-spacing:.4px;text-transform:uppercase}
+.data-table td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:var(--s2)}
+.data-table tbody tr:nth-child(even) td{background:rgba(255,255,255,0.015)}
+.pill{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;font-family:var(--mono)}
+.pill-green{background:var(--green-d);color:var(--green);border:1px solid var(--green-b)}
+.pill-red{background:var(--red-d);color:var(--red);border:1px solid var(--red-b)}
+.pill-amber{background:var(--amber-d);color:var(--amber);border:1px solid var(--amber-b)}
+.pill-blue{background:var(--blue-d);color:var(--blue);border:1px solid var(--blue-b)}
+.pill-grey{background:var(--s3);color:var(--muted2);border:1px solid var(--border)}
+.pill-purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple-b)}
+
+/* ═══ SECTION CARD ═══ */
+.sec{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:20px}
+.sec-title{font-size:14px;font-weight:600;margin-bottom:4px}
+.sec-sub{font-size:12px;color:var(--muted2);margin-bottom:16px}
+
+/* ═══ CHART GRID ═══ */
+.chart-grid{display:grid;gap:16px;margin-bottom:20px}
+.chart-grid.col2{grid-template-columns:1fr 1fr}
+.chart-grid.col3{grid-template-columns:1fr 1fr 1fr}
+.chart-box{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.chart-box-title{font-size:12px;font-weight:600;color:var(--muted2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+.chart-box canvas{max-height:220px}
+
+/* ═══ FILTER BAR ═══ */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.filter-bar select,.filter-bar input{background:var(--s2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-family:var(--font);font-size:12px;cursor:pointer}
+.filter-bar select:focus,.filter-bar input:focus{outline:none;border-color:var(--blue)}
+.filter-label{font-size:11px;color:var(--muted);font-weight:500}
+
+/* ═══ MODAL ═══ */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--s1);border:1px solid var(--border2);border-radius:var(--radius-lg);width:100%;max-width:960px;max-height:85vh;display:flex;flex-direction:column}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-head h3{font-size:16px;font-weight:600}
+.modal-close{background:none;border:none;color:var(--muted2);font-size:22px;cursor:pointer;line-height:1}
+.modal-body{padding:18px 22px;overflow-y:auto;flex:1}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+
+/* ═══ EMPTY / PENDING ═══ */
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-state .es-icon{font-size:40px;margin-bottom:12px}
+.empty-state .es-title{font-size:15px;font-weight:600;color:var(--muted2);margin-bottom:6px}
+.empty-state .es-sub{font-size:13px}
+
+/* ═══ PROGRESS BAR ═══ */
+.prog-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:4px}
+.prog-fill{height:100%;border-radius:3px;transition:width .3s}
+
+/* ═══ UPLOAD PROGRESS TOAST ═══ */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 18px;font-size:13px;z-index:999;display:none}
+.toast.show{display:block}
+
+/* ═══ ASSET CLASS FILTER BAR ═══ */
+.fa-class-bar{display:flex;align-items:center;flex-wrap:wrap;gap:6px;background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px}
+.cls-btn{background:var(--s2);border:1px solid var(--border2);color:var(--muted2);padding:5px 14px;border-radius:20px;font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap}
+.cls-btn:hover{border-color:var(--purple);color:var(--purple)}
+.cls-btn.active{background:var(--purple-d);border-color:var(--purple-b);color:var(--purple);font-weight:600}
+.dev-btn:hover{border-color:var(--teal);color:var(--teal)}
+.dev-btn.active{background:var(--teal-d);border-color:var(--teal-b);color:var(--teal);font-weight:600}
+.fa-dev-bar{margin-top:-8px}
+.fa-exempt-bar{margin-top:-8px;border-color:var(--red-b) !important}
+.fa-exempt-bar .filter-label{color:var(--red)}
+.exempt-btn:hover{border-color:var(--red);color:var(--red)}
+.exempt-btn.active{background:var(--red-d);border-color:var(--red-b);color:var(--red);font-weight:600;text-decoration:line-through}
+.exempt-note{font-size:11px;color:var(--muted);margin-left:4px;align-self:center}
+
+/* ═══ EXPORT PANEL ═══ */
+.exp-opt{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius);cursor:pointer;transition:all .2s;margin-bottom:4px;border:1px solid transparent}
+.exp-opt:hover{background:var(--s2);border-color:var(--border)}
+.exp-opt.active{background:var(--blue-d);border-color:var(--blue-b)}
+.exp-opt-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.exp-opt-title{font-size:13px;font-weight:600;color:var(--text)}
+.exp-opt.active .exp-opt-title{color:var(--blue)}
+.exp-opt-sub{font-size:11px;color:var(--muted2);margin-top:1px}
+
+@media(max-width:768px){
+  .traffic-grid,.chart-grid.col2,.chart-grid.col3,.export-grid{grid-template-columns:1fr}
+  .module-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-mark">IT</div>
+    <div><div class="logo-text">Audit <span>Master</span></div></div>
+  </div>
+  <div class="topbar-right" id="topbar-actions" style="display:none">
+    <button class="tb-btn" onclick="showExportModal()">⬇ Export</button>
+    <button class="tb-btn primary" onclick="goStep('overview')">📊 Overview</button>
+    <button class="tb-btn danger" onclick="resetAll()">↺ Reset</button>
+  </div>
+</div>
+
+<!-- STEPPER -->
+<div class="stepper" id="stepper">
+  <button class="step-btn active" id="stp-upload" onclick="goStep('upload')">
+    <span class="step-num">1</span> Upload Data
+  </button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" id="stp-overview" onclick="goStep('overview')">
+    <span class="step-num">2</span> Overview
+  </button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" id="stp-software" onclick="goStep('software')">
+    <span class="step-num">3</span> Software
+  </button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" id="stp-hardware" onclick="goStep('hardware')">
+    <span class="step-num">4</span> Hardware
+  </button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" id="stp-assets" onclick="goStep('assets')">
+    <span class="step-num">5</span> Fixed Assets
+  </button>
+</div>
+
+<!-- ════ PAGE: UPLOAD ════ -->
+<div class="page active main" id="page-upload">
+  <div class="overview-header" style="margin-bottom:28px">
+    <div>
+      <div class="overview-title">Upload your monthly data</div>
+      <div class="overview-sub">Upload files for each module — you can proceed with partial data and upload more later</div>
+    </div>
+  </div>
+
+  <div class="module-grid">
+    <!-- MODULE A: SOFTWARE -->
+    <div class="mod-card" id="card-sw">
+      <div class="mod-header">
+        <div class="mod-icon blue">🛡️</div>
+        <div><div class="mod-title">Software / Compliance</div><div class="mod-sub">WS1 monthly export — blacklist, prohibited, AV, VPN</div></div>
+        <div class="mod-status pending" id="sw-status">PENDING</div>
+      </div>
+      <div class="drop-zone" id="dz-sw" onclick="document.getElementById('fi-sw').click()" ondragover="dzDrag(event,'sw')" ondragleave="dzOff('sw')" ondrop="dzDrop(event,'sw')">
+        <div class="dz-icon">📋</div>
+        <div class="dz-title">Click to add WS1 software files</div>
+        <div class="dz-sub">Multiple months supported • .xlsx / .xls</div>
+      </div>
+      <input type="file" id="fi-sw" hidden multiple accept=".xlsx,.xls" onchange="addFiles('sw',event)">
+      <div class="files-chips" id="chips-sw"></div>
+    </div>
+
+    <!-- MODULE B: HARDWARE DEVICE -->
+    <div class="mod-card" id="card-hw">
+      <div class="mod-header">
+        <div class="mod-icon green">💻</div>
+        <div><div class="mod-title">Hardware / Devices</div><div class="mod-sub">Office device files — SCCM-WinOS, Device-WinOS, Device-MacOS sheets</div></div>
+        <div class="mod-status pending" id="hw-status">PENDING</div>
+      </div>
+      <div class="drop-zone" id="dz-hw" onclick="document.getElementById('fi-hw').click()" ondragover="dzDrag(event,'hw')" ondragleave="dzOff('hw')" ondrop="dzDrop(event,'hw')">
+        <div class="dz-icon">🖥️</div>
+        <div class="dz-title">Click to add office device files</div>
+        <div class="dz-sub">Multiple office files supported • .xlsx / .xls</div>
+      </div>
+      <input type="file" id="fi-hw" hidden multiple accept=".xlsx,.xls" onchange="addFiles('hw',event)">
+      <div class="files-chips" id="chips-hw"></div>
+    </div>
+
+    <!-- MODULE C: FIXED ASSETS -->
+    <div class="mod-card" id="card-fa">
+      <div class="mod-header">
+        <div class="mod-icon amber">🗂️</div>
+        <div><div class="mod-title">Fixed Assets</div><div class="mod-sub">FA list from Finance + WS1 export + Fund reference table</div></div>
+        <div class="mod-status pending" id="fa-status">PENDING</div>
+      </div>
+      <div class="drop-zone" id="dz-fa" onclick="document.getElementById('fi-fa').click()" ondragover="dzDrag(event,'fa')" ondragleave="dzOff('fa')" ondrop="dzDrop(event,'fa')">
+        <div class="dz-icon">📊</div>
+        <div class="dz-title">Click to add FA list from Finance</div>
+        <div class="dz-sub">ECC Asset format • .xlsx / .xls</div>
+      </div>
+      <input type="file" id="fi-fa" hidden accept=".xlsx,.xls" onchange="addFiles('fa',event)">
+      <div class="files-chips" id="chips-fa"></div>
+      <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+        <div class="dz-sub" style="margin-bottom:8px;font-weight:600;color:var(--amber)">Optional: Custom Fund reference table</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">✅ Built-in Duke-NUS fund mapping is already loaded — only upload if you need to override it</div>
+        <div class="drop-zone" id="dz-ref" onclick="document.getElementById('fi-ref').click()" style="padding:12px">
+          <div class="dz-sub">Custom Fund code → Office/Dept mapping • .xlsx / .xls</div>
+        </div>
+        <input type="file" id="fi-ref" hidden accept=".xlsx,.xls" onchange="addFiles('ref',event)">
+        <div class="files-chips" id="chips-ref"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="action-bar">
+    <div class="action-info">
+      <span id="upload-summary" style="color:var(--muted2);font-size:13px">Upload at least one module to continue</span>
+    </div>
+    <div class="btn-row">
+      <button class="btn primary" id="btn-analyze" disabled onclick="analyzeAll()">▶ Analyse & View Dashboard</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PAGE: OVERVIEW ════ -->
+<div class="page main" id="page-overview">
+  <div class="overview-header">
+    <div>
+      <div class="overview-title">Audit Overview</div>
+      <div class="overview-sub" id="ov-sub">—</div>
+    </div>
+    <div class="audit-date" id="ov-date">—</div>
+  </div>
+
+  <!-- Traffic lights -->
+  <div class="traffic-grid" id="traffic-grid">
+    <div class="traffic-card grey" id="tc-sw" onclick="goStep('software')">
+      <div class="tc-top">
+        <div class="tc-icon" style="background:var(--blue-d)">🛡️</div>
+        <div class="tc-badge badge-grey">NO DATA</div>
+      </div>
+      <div class="tc-name">Software Compliance</div>
+      <div class="tc-big" id="tc-sw-score">—</div>
+      <div class="tc-kpis" id="tc-sw-kpis"></div>
+    </div>
+    <div class="traffic-card grey" id="tc-hw" onclick="goStep('hardware')">
+      <div class="tc-top">
+        <div class="tc-icon" style="background:var(--green-d)">💻</div>
+        <div class="tc-badge badge-grey" id="tc-hw-badge">NO DATA</div>
+      </div>
+      <div class="tc-name">Hardware / Devices</div>
+      <div class="tc-big" id="tc-hw-score">—</div>
+      <div class="tc-kpis" id="tc-hw-kpis"></div>
+    </div>
+    <div class="traffic-card grey" id="tc-fa" onclick="goStep('assets')">
+      <div class="tc-top">
+        <div class="tc-icon" style="background:var(--amber-d)">🗂️</div>
+        <div class="tc-badge badge-grey" id="tc-fa-badge">NO DATA</div>
+      </div>
+      <div class="tc-name">Fixed Assets</div>
+      <div class="tc-big" id="tc-fa-score">—</div>
+      <div class="tc-kpis" id="tc-fa-kpis"></div>
+    </div>
+  </div>
+
+  <!-- Combined KPIs -->
+  <div class="kpi-strip" id="kpi-strip"></div>
+
+  <!-- Chart row -->
+  <div class="chart-grid col2" id="ov-charts">
+    <div class="chart-box">
+      <div class="chart-box-title">Software risk breakdown</div>
+      <canvas id="ch-sw-pie"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="chart-box-title">Encryption by ownership</div>
+      <canvas id="ch-enc-bar"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PAGE: SOFTWARE ════ -->
+<div class="page main" id="page-software">
+  <div class="overview-header">
+    <div><div class="overview-title">Software Compliance</div><div class="overview-sub">Blacklisted apps, prohibited software, AV gap, VPN compliance</div></div>
+    <div class="btn-row">
+      <button class="btn amber" onclick="exportCSV('sw')">⬇ Export CSV</button>
+    </div>
+  </div>
+  <div id="sw-content"><div class="empty-state"><div class="es-icon">📋</div><div class="es-title">No software data</div><div class="es-sub">Upload WS1 software files to see compliance data</div></div></div>
+</div>
+
+<!-- ════ PAGE: HARDWARE ════ -->
+<div class="page main" id="page-hardware">
+  <div class="overview-header">
+    <div><div class="overview-title">Hardware / Devices</div><div class="overview-sub">Device inventory, encryption status, corporate vs employee-owned</div></div>
+    <div class="btn-row">
+      <button class="btn green" onclick="exportCSV('hw')">⬇ Export CSV</button>
+    </div>
+  </div>
+  <div id="hw-content"><div class="empty-state"><div class="es-icon">💻</div><div class="es-title">No hardware data</div><div class="es-sub">Upload office device files to see hardware data</div></div></div>
+</div>
+
+<!-- ════ PAGE: FIXED ASSETS ════ -->
+<div class="page main" id="page-assets">
+  <div class="overview-header">
+    <div><div class="overview-title">Fixed Assets</div><div class="overview-sub">Asset register, duplicate serial numbers, WS1 reconciliation</div></div>
+    <div class="btn-row">
+      <button class="btn amber" onclick="exportCSV('fa')">⬇ Export CSV</button>
+    </div>
+  </div>
+  <div id="fa-content"><div class="empty-state"><div class="es-icon">🗂️</div><div class="es-title">No asset data</div><div class="es-sub">Upload the FA list from Finance to see asset data</div></div></div>
+</div>
+
+<!-- ════ EXPORT MODAL ════ -->
+<div class="modal-bg" id="modal-export" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:1100px">
+    <div class="modal-head">
+      <h3>Export Audit Report</h3>
+      <button class="modal-close" onclick="document.getElementById('modal-export').style.display='none'">×</button>
+    </div>
+    <div class="modal-body" style="display:flex;gap:20px;padding:0;overflow:hidden;height:70vh">
+
+      <!-- LEFT: export options -->
+      <div style="width:260px;flex-shrink:0;border-right:1px solid var(--border);padding:16px;overflow-y:auto">
+        <div style="font-size:11px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Select report</div>
+        <div id="exp-options">
+          <div class="exp-opt active" data-exp="sw" onclick="selectExpOpt(this,'sw')">
+            <div class="exp-opt-icon" style="background:var(--blue-d)">🛡️</div>
+            <div><div class="exp-opt-title">Software</div><div class="exp-opt-sub">AV gap, blacklist, VPN</div></div>
+          </div>
+          <div class="exp-opt" data-exp="hw" onclick="selectExpOpt(this,'hw')">
+            <div class="exp-opt-icon" style="background:var(--green-d)">💻</div>
+            <div><div class="exp-opt-title">Hardware</div><div class="exp-opt-sub">Devices, encryption</div></div>
+          </div>
+          <div class="exp-opt" data-exp="fa" onclick="selectExpOpt(this,'fa')">
+            <div class="exp-opt-icon" style="background:var(--amber-d)">🗂️</div>
+            <div><div class="exp-opt-title">Fixed Assets</div><div class="exp-opt-sub">Assets, WS1 status</div></div>
+          </div>
+          <div class="exp-opt" data-exp="nows1" onclick="selectExpOpt(this,'nows1')">
+            <div class="exp-opt-icon" style="background:var(--amber-d)">⚠️</div>
+            <div><div class="exp-opt-title">Not in WS1</div><div class="exp-opt-sub">Missing enrolment</div></div>
+          </div>
+          <div class="exp-opt" data-exp="dups" onclick="selectExpOpt(this,'dups')">
+            <div class="exp-opt-icon" style="background:var(--red-d)">🔴</div>
+            <div><div class="exp-opt-title">Duplicates</div><div class="exp-opt-sub">Multiple asset nos.</div></div>
+          </div>
+          <div class="exp-opt" data-exp="avGap" onclick="selectExpOpt(this,'avGap')">
+            <div class="exp-opt-icon" style="background:var(--red-d)">🛡️</div>
+            <div><div class="exp-opt-title">AV Gap</div><div class="exp-opt-sub">No antivirus</div></div>
+          </div>
+          <div class="exp-opt" data-exp="blacklist" onclick="selectExpOpt(this,'blacklist')">
+            <div class="exp-opt-icon" style="background:var(--amber-d)">⛔</div>
+            <div><div class="exp-opt-title">Blacklisted</div><div class="exp-opt-sub">Blacklisted apps</div></div>
+          </div>
+          <div class="exp-opt" data-exp="combined" onclick="selectExpOpt(this,'combined')">
+            <div class="exp-opt-icon" style="background:var(--purple-d)">📄</div>
+            <div><div class="exp-opt-title">Combined (all)</div><div class="exp-opt-sub">All modules merged</div></div>
+          </div>
+          <div class="exp-opt" data-exp="summary" onclick="selectExpOpt(this,'summary')">
+            <div class="exp-opt-icon" style="background:var(--teal-d)">📊</div>
+            <div><div class="exp-opt-title">Executive Summary</div><div class="exp-opt-sub">KPIs only</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: search + preview -->
+      <div style="flex:1;display:flex;flex-direction:column;padding:16px;min-width:0">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+          <input id="exp-search" placeholder="🔍  Search across all columns..." oninput="filterExpPreview()"
+            style="flex:1;min-width:180px;background:var(--s2);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:8px;font-family:var(--font);font-size:13px">
+          <span id="exp-count" style="font-size:12px;color:var(--muted2);white-space:nowrap">— rows</span>
+          <button id="exp-dl-btn" class="btn primary" onclick="downloadCurrentExp()">⬇ Download CSV</button>
+        </div>
+        <div class="tbl-wrap" style="flex:1;overflow:auto">
+          <table class="data-table" id="exp-preview-table">
+            <thead id="exp-thead"></thead>
+            <tbody id="exp-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DRILL MODAL -->
+<div class="modal-bg" id="modal-drill" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="drill-title">Details</h3>
+      <button class="modal-close" onclick="document.getElementById('modal-drill').style.display='none'">×</button>
+    </div>
+    <div class="modal-body" id="drill-body"></div>
+    <div class="modal-foot">
+      <button class="btn amber" onclick="exportDrill()">⬇ Export CSV</button>
+      <button class="btn" onclick="document.getElementById('modal-drill').style.display='none'">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════
+const state = {
+  swFiles:[], hwFiles:[], faFile:null, refFile:null,
+  sw:[], hw:[], fa:[], ref:[],
+  swParsed:false, hwParsed:false, faParsed:false,
+  charts:{}
+};
+let drillData=[], drillCols=[];
+
+// ════════════════════════════════════════
+//  NAV
+// ════════════════════════════════════════
+function goStep(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.step-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.getElementById('stp-'+id)?.classList.add('active');
+  if(id==='overview') renderOverview();
+  if(id==='software') renderSoftware();
+  if(id==='hardware') renderHardware();
+  if(id==='assets') renderAssets();
+}
+
+// ════════════════════════════════════════
+//  FILE UPLOAD
+// ════════════════════════════════════════
+function dzDrag(e,mod){e.preventDefault();document.getElementById('dz-'+mod).classList.add('drag')}
+function dzOff(mod){document.getElementById('dz-'+mod).classList.remove('drag')}
+function dzDrop(e,mod){e.preventDefault();dzOff(mod);const dt=e.dataTransfer;if(dt.files.length)addFilesFromList(mod,dt.files)}
+function addFiles(mod,e){addFilesFromList(mod,e.target.files);e.target.value=''}
+
+function addFilesFromList(mod,files){
+  Array.from(files).forEach(f=>{
+    if(mod==='sw') state.swFiles.push(f);
+    else if(mod==='hw') state.hwFiles.push(f);
+    else if(mod==='fa'){state.faFile=f}
+    else if(mod==='ref'){state.refFile=f}
+  });
+  renderChips(mod);
+  updateUploadState();
+}
+
+function removeFile(mod,idx){
+  if(mod==='sw') state.swFiles.splice(idx,1);
+  else if(mod==='hw') state.hwFiles.splice(idx,1);
+  else if(mod==='fa') state.faFile=null;
+  else if(mod==='ref') state.refFile=null;
+  renderChips(mod);
+  updateUploadState();
+}
+
+function renderChips(mod){
+  const wrap=document.getElementById('chips-'+mod);
+  let files=[];
+  if(mod==='sw') files=state.swFiles;
+  else if(mod==='hw') files=state.hwFiles;
+  else if(mod==='fa') files=state.faFile?[state.faFile]:[];
+  else if(mod==='ref') files=state.refFile?[state.refFile]:[];
+  wrap.innerHTML=files.map((f,i)=>`<div class="chip ${mod==='ref'?'ref':''}">📄 ${f.name} <button class="chip-del" onclick="removeFile('${mod}',${i})">×</button></div>`).join('');
+  const dz=document.getElementById('dz-'+mod);
+  if(dz) dz.classList.toggle('loaded', files.length>0);
+}
+
+function updateUploadState(){
+  const hasSW=state.swFiles.length>0, hasHW=state.hwFiles.length>0, hasFA=state.faFile!=null;
+  const count=[hasSW,hasHW,hasFA].filter(Boolean).length;
+  const parts=[];
+  if(hasSW){parts.push('Software ('+state.swFiles.length+' file'+( state.swFiles.length>1?'s':'')+')');document.getElementById('sw-status').textContent='READY';document.getElementById('sw-status').className='mod-status ok';document.getElementById('card-sw').classList.add('loaded')}
+  else{document.getElementById('sw-status').textContent='PENDING';document.getElementById('sw-status').className='mod-status pending';document.getElementById('card-sw').classList.remove('loaded')}
+  if(hasHW){parts.push('Hardware ('+state.hwFiles.length+' file'+( state.hwFiles.length>1?'s':'')+')');document.getElementById('hw-status').textContent='READY';document.getElementById('hw-status').className='mod-status ok';document.getElementById('card-hw').classList.add('loaded')}
+  else{document.getElementById('hw-status').textContent='PENDING';document.getElementById('hw-status').className='mod-status pending';document.getElementById('card-hw').classList.remove('loaded')}
+  if(hasFA){parts.push('Fixed Assets');document.getElementById('fa-status').textContent='READY';document.getElementById('fa-status').className='mod-status ok';document.getElementById('card-fa').classList.add('loaded')}
+  else{document.getElementById('fa-status').textContent='PENDING';document.getElementById('fa-status').className='mod-status pending';document.getElementById('card-fa').classList.remove('loaded')}
+  document.getElementById('upload-summary').innerHTML= count>0 ? `<strong style="color:var(--text)">${count}/3 modules ready:</strong> ${parts.join(' • ')}` : 'Upload at least one module to continue';
+  document.getElementById('btn-analyze').disabled = count===0;
+}
+
+// ════════════════════════════════════════
+//  PARSE HELPERS
+// ════════════════════════════════════════
+function readXLSX(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      try{
+        const data=new Uint8Array(e.target.result);
+        const wb=XLSX.read(data,{type:'array',raw:false,defval:'',blankrows:false,cellDates:true});
+        res(wb);
+      }catch(err){rej(new Error('Cannot read "'+file.name+'": '+err.message));}
+    };
+    r.onerror=()=>rej(new Error('FileReader failed on "'+file.name+'"'));
+    r.readAsArrayBuffer(file);
+  });
+}
+
+function sheetToRows(wb, sheetHints){
+  for(const hint of sheetHints){
+    const name=wb.SheetNames.find(n=>n.toLowerCase().includes(hint.toLowerCase()));
+    if(name) return XLSX.utils.sheet_to_json(wb.Sheets[name],{defval:'',raw:false});
+  }
+  // fallback: first sheet
+  return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:'',raw:false});
+}
+
+function flexGet(row, keys){
+  for(const k of keys){
+    const found=Object.keys(row).find(rk=>rk.toLowerCase().replace(/[\s\-_()]/g,'').includes(k.toLowerCase().replace(/[\s\-_()]/g,'')));
+    if(found && row[found]!==undefined && row[found]!=='') return String(row[found]).trim();
+  }
+  return '';
+}
+
+// ════════════════════════════════════════
+//  PARSE: SOFTWARE
+//  Supports actual WS1 file structure:
+//  Sheets: WS1-WinOS, WS1-MacOS, SCCM-WinOS
+//  Groups: 'Blacklist', 'Potential License Compliance'
+//  AV:     'trend micro' in Software col (any group)
+//  VPN:    vpn keywords in Software Group='Blacklist'
+// ════════════════════════════════════════
+const APPROVED_VPN=['cisco secure client','anyconnect','pulse secure','ivanti'];
+// SW sheets to read — exact names first, then fallback patterns
+const SW_SHEETS=['WS1-WinOS','WS1-MacOS','SCCM-WinOS'];
+
+// Scientific / licensed software to track
+const SCI_APPS=[
+  {id:'matlab',     label:'MATLAB',           keywords:['matlab']},
+  {id:'spss',       label:'SPSS',             keywords:['spss','ibm spss']},
+  {id:'sas',        label:'SAS',              keywords:['sas system','sas studio','sas enterprise']},
+  {id:'stata',      label:'Stata',            keywords:['stata']},
+  {id:'rstudio',    label:'R / RStudio',      keywords:['rstudio','r for windows','r statistical']},
+  {id:'nvivo',      label:'NVivo',            keywords:['nvivo']},
+  {id:'endnote',    label:'EndNote',          keywords:['endnote']},
+  {id:'graphpad',   label:'GraphPad Prism',   keywords:['graphpad','prism']},
+  {id:'arcgis',     label:'ArcGIS',           keywords:['arcgis','arcmap']},
+  {id:'labview',    label:'LabVIEW',          keywords:['labview']},
+  {id:'mathematica',label:'Mathematica',      keywords:['mathematica','wolfram']},
+  {id:'minitab',    label:'Minitab',          keywords:['minitab']},
+  {id:'overleaf',   label:'Overleaf / LaTeX', keywords:['texstudio','miktex','texlive','overleaf','lyx']},
+  {id:'autodock',   label:'AutoDock',         keywords:['autodock']},
+  {id:'pymol',      label:'PyMOL',            keywords:['pymol']},
+];
+
+async function parseSW(){
+  state.sw=[];
+  // Use a Map for fast O(1) lookup by serial
+  const devMap=new Map();
+
+  for(const file of state.swFiles){
+    const wb=await readXLSX(file);
+
+    // Determine which sheets to parse: prefer known names, else all non-cover sheets
+    const sheetsToRead=wb.SheetNames.filter(n=>{
+      const nl=n.toLowerCase();
+      return SW_SHEETS.some(s=>n===s) ||
+             nl.includes('ws1') || nl.includes('sccm') ||
+             (nl.includes('win') && !nl.includes('cover')) ||
+             nl.includes('mac') || nl.includes('ios');
+    });
+    const finalSheets=sheetsToRead.length>0 ? sheetsToRead :
+      wb.SheetNames.filter(n=>!n.toLowerCase().includes('cover')&&!n.toLowerCase().includes('summary'));
+
+    for(const sheetName of finalSheets){
+      const isMac=sheetName.toLowerCase().includes('mac');
+      const isSCCM=sheetName.toLowerCase().includes('sccm');
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{defval:'',raw:false});
+      if(!rows.length) continue;
+
+      rows.forEach(row=>{
+        // Serial — handles both 'HW Serial Number' (WS1) and 'HWSERIALNUMBER' (SCCM)
+        const serial=(
+          row['HW Serial Number']||row['HWSERIALNUMBER']||
+          row['hw serial number']||row['Hw Serial Number']||
+          flexGet(row,['hwserial','serialnumber','serial'])
+        ).toString().trim().toUpperCase();
+        if(!serial||serial.length<4||serial==='N/A'||serial==='NONE') return;
+
+        // Software name — 'Software' (WS1) or 'SOFTWARE' (SCCM)
+        const swName=(row['Software']||row['SOFTWARE']||flexGet(row,['software','application'])||'').toString().trim();
+        const swNameL=swName.toLowerCase();
+
+        // Software Group — 'Software Group' (WS1) or 'SWRGROUP' (SCCM)
+        const swGroup=(row['Software Group']||row['SWRGROUP']||flexGet(row,['swgroup','softwaregroup','group'])||'').toString().trim();
+
+        // Exact group matching (case-sensitive as in file)
+        const isBlacklist   = swGroup==='Blacklist';
+        const isProhibited  = swGroup==='Potential License Compliance';
+
+        // AV detection: Trend Micro appears in Standard group — check software name
+        const isAV = swNameL.includes('trend micro')||swNameL.includes('symantec')||
+                     swNameL.includes('mcafee')||swNameL.includes('sophos')||
+                     swNameL.includes('kaspersky')||swNameL.includes('windows defender antivirus');
+
+        // Create device record on first encounter
+        if(!devMap.has(serial)){
+          const nusId   =(row['NUS-ID']||row['NUS_ID']||flexGet(row,['nusid'])||'').toString().trim();
+          const compName=(row['Computer Name']||row['COMPUTERNAME']||flexGet(row,['computername','computer'])||'').toString().trim();
+          const platform=(row['Platform']||flexGet(row,['platform'])||(isMac?'Apple macOS':isSCCM?'Windows SCCM':'Windows Desktop')).toString().trim();
+          const ownership=(row['Ownership']||flexGet(row,['ownership','owner'])||'').toString().trim();
+          const invDate =(row['Inventory Date']||row['INVENTORYDATE']||flexGet(row,['inventorydate','invdate'])||'').toString().trim();
+          devMap.set(serial,{
+            serial, nusId, computerName:compName, platform, ownership,
+            office: file.name.replace(/\.xlsx?$/i,'').replace(/_/g,' '),
+            invDate, month: invDate||file.name,
+            hasAV:false, badApps:[], prohibitedApps:[], vpnApps:[], sciApps:[]
+          });
+        }
+
+        const dev=devMap.get(serial);
+        if(isAV) dev.hasAV=true;
+        if(isBlacklist && swName){
+          // VPN check
+          const isVPN=swNameL.includes('vpn')||swNameL.includes('nordvpn')||swNameL.includes('expressvpn')||swNameL.includes('openvpn')||swNameL.includes('wireguard')||swNameL.includes('protonvpn')||swNameL.includes('hotspot shield');
+          if(isVPN){
+            const approved=APPROVED_VPN.some(a=>swNameL.includes(a));
+            if(!approved&&!dev.vpnApps.includes(swName)) dev.vpnApps.push(swName);
+          } else {
+            if(!dev.badApps.includes(swName)) dev.badApps.push(swName);
+          }
+        }
+        if(isProhibited && swName && !dev.prohibitedApps.includes(swName)) dev.prohibitedApps.push(swName);
+        // Scientific software detection — check all rows regardless of group
+        if(swName){
+          const matched=SCI_APPS.find(a=>a.keywords.some(k=>swNameL.includes(k)));
+          if(matched && !dev.sciApps.find(s=>s.id===matched.id))
+            dev.sciApps.push({id:matched.id, label:matched.label, raw:swName});
+        }
+      });
+    }
+  }
+
+  state.sw=[...devMap.values()];
+  state.swParsed=true;
+}
+
+// ════════════════════════════════════════
+//  PARSE: HARDWARE
+//  Sheets: WS1-WinOS, WS1-MacOS, SCCM-WinOS
+//  Serial: 'HW Serial Number' (WS1) / 'HWSERIALNUMBER' (SCCM)
+//  Encryption: 'Device Encryption Status' col (value = 'Encrypted')
+//  Ownership: 'CorporateDedicated' or 'EmployeeOwned'
+// ════════════════════════════════════════
+async function parseHW(){
+  state.hw=[];
+  const devMap=new Map();
+
+  for(const file of state.hwFiles){
+    const wb=await readXLSX(file);
+    const sheetsToRead=wb.SheetNames.filter(n=>{
+      const nl=n.toLowerCase();
+      return n==='WS1-WinOS'||n==='WS1-MacOS'||n==='SCCM-WinOS'||
+             nl.includes('ws1')||nl.includes('sccm')||
+             (nl.includes('win')&&!nl.includes('cover'))||
+             nl.includes('mac')||nl.includes('ios');
+    });
+    const finalSheets=sheetsToRead.length>0?sheetsToRead:
+      wb.SheetNames.filter(n=>!n.toLowerCase().includes('cover')&&!n.toLowerCase().includes('summary'));
+
+    for(const sheetName of finalSheets){
+      const isMac=sheetName.toLowerCase().includes('mac');
+      const isSCCM=sheetName.toLowerCase().includes('sccm');
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{defval:'',raw:false});
+      if(!rows.length) continue;
+
+      // Find encryption column from first row
+      const firstRow=rows[0];
+      const encColName=Object.keys(firstRow).find(k=>k.toLowerCase().includes('encrypt'))||null;
+
+      rows.forEach(row=>{
+        const serial=(
+          row['HW Serial Number']||row['HWSERIALNUMBER']||
+          flexGet(row,['hwserial','serialnumber','serial'])
+        ).toString().trim().toUpperCase();
+        if(!serial||serial.length<4||serial==='N/A'||serial==='NONE') return;
+        if(devMap.has(serial)) return; // deduplicate
+
+        const encVal=encColName?String(row[encColName]||'').trim():'';
+        const ownership=(row['Ownership']||flexGet(row,['ownership','owner'])||'').toString().trim();
+        devMap.set(serial,{
+          serial,
+          nusId:   (row['NUS-ID']||row['NUS_ID']||flexGet(row,['nusid'])||'').toString().trim(),
+          computerName:(row['Computer Name']||row['COMPUTERNAME']||flexGet(row,['computername'])||'').toString().trim(),
+          platform:(row['Platform']||flexGet(row,['platform'])||(isMac?'Apple macOS':isSCCM?'Windows SCCM':'Windows Desktop')).toString().trim(),
+          ownership,
+          office: file.name.replace(/\.xlsx?$/i,'').replace(/_/g,' '),
+          model:  (row['Model']||row['MODEL']||flexGet(row,['model'])||'').toString().trim(),
+          os:     (row['OS']||row['OS Version']||flexGet(row,['os','osversion'])||'').toString().trim(),
+          encrypted: encVal==='Encrypted'||encVal.toLowerCase()==='yes'||encVal.toLowerCase()==='true',
+          encryptionRaw: encVal,
+          source: sheetName,
+          sourceFile: file.name
+        });
+      });
+    }
+  }
+  state.hw=[...devMap.values()];
+  state.hwParsed=true;
+}
+
+// ════════════════════════════════════════
+//  PARSE: FIXED ASSETS
+// ════════════════════════════════════════
+const DEVICE_KEYWORDS={
+  'Laptop':['laptop','notebook','thinkpad','macbook','latitude','elitebook','inspiron','xps','surface'],
+  'Desktop':['desktop','workstation','optiplex','thinkcentre','imac','mac mini','prodesk'],
+  'Server':['server','poweredge','proliant'],
+  'Tablet':['tablet','ipad'],
+  'Monitor':['monitor','display','screen'],
+  'Printer':['printer','mfp','laserjet'],
+  'Network':['switch','router','access point','ap','firewall'],
+};
+
+function detectDeviceType(desc){
+  const d=desc.toLowerCase();
+  for(const[type,kws] of Object.entries(DEVICE_KEYWORDS)){
+    if(kws.some(k=>d.includes(k))) return type;
+  }
+  return 'Other';
+}
+
+async function parseFA(){
+  state.fa=[];
+  if(!state.faFile) return;
+  const wb=await readXLSX(state.faFile);
+  const rows=sheetToRows(wb,['asset','fa','fixed','sheet1']);
+
+  // Built-in fund code → Office / Department lookup (from Duke-NUS SWITCH formulas)
+  // Falls back to uploaded ref file if provided
+  function lookupFund(code){
+    const c = (code||'').trim();
+    if(!c) return {office:'',dept:''};
+
+    // Office mapping (order matters — more specific first)
+    let office = 'Unknown';
+    if(/CLL|COP|CORE|Dean|Dev|DUKE|SHERIC|SDGHI/i.test(c))            office = "Dean's Office";
+    else if(/OCS|OIS|COMM/i.test(c))                                   office = "Office of Corporate Services";
+    else if(/OIE/i.test(c))                                            office = "Office of Innovation & Entrepreneurship";
+    else if(/RES|LCPC|CARE|EID/i.test(c))                              office = "Office of Research";
+    else if(/CCSD|OACD|OAM/i.test(c))                                  office = "Office of Academic Medicine";
+    else if(/EDU/i.test(c))                                            office = "Office of Education";
+    else if(/OFA/i.test(c))                                            office = "Office of Faculty Affairs";
+
+    // Department mapping — longest/most-specific match first
+    let dept = 'Unknown';
+    const rules = [
+      ['OCS_NA_10',  'Senior Vice Dean Office, OCS'],
+      ['OCS_NA_9',   'Board Secretariat, Corporate Administration & Risk Management Department'],
+      ['OCS_NA_8',   'Board Secretariat, Corporate Administration & Risk Management Department'],
+      ['OCS_HR_9',   'Human Resources Department'],
+      ['OCS_IT_1',   'Information Technology Department'],
+      ['OCS_IT',     'Information Technology Department'],
+      ['OCS_BS',     'Board Secretariats Department'],
+      ['OCS_VDO',    'Senior Vice Dean Office, OCS'],
+      ['OCS_CP',     'Central Procurement Department'],
+      ['OOE_NA_10',  'Vice Dean Office, OOE'],
+      ['OOR_NA_10',  'Vice Dean Office, OOR'],
+      ['OACD_NA_10', 'Vice Dean Office, OAM'],
+      ['OACD_ADD_NCCS','Appointments & Development Department'],
+      ['OACD_JOAM_4','Joint Office of Academic Medicine'],
+      ['OACD_',      'Vice Dean Office, OAM'],
+      ['OAM_APMD',   'Academic Programmes Management Department'],
+      ['OAM_VDO',    'Vice Dean Office, OAM'],
+      ['OIE_NA_10',  'Vice Dean Office, OIE'],
+      ['OIE_NA_6',   'CTED / CIE'],
+      ['OFA_FA_5',   'Faculty Advanced Department'],
+      ['OFA_VDO_10', 'Vice Dean Office, OFA'],
+      ['EDU_NA_10',  'Vice Dean Office, OOE'],
+      ['EDU_NA_5',   'Technology Enhanced Learning & Innovation Department'],
+      ['EDU_NA_4',   'Education Administration Department'],
+      ['EDU_NA_3',   'MD Program Department'],
+      ['EDU_NA_2',   'Vice Dean Office, OOE'],
+      ['EDU_NA_1',   'MD Program Department'],
+      ['LTOOR_4',    'Research Operations'],
+      ['RES_CBDS_1', 'Centre for Biomedical Data Science'],
+      ['RES_CECQM_4','Centre for Quantitative Medicine'],
+      ['RES_LCPC_4', 'Lien Centre for Palliative Care'],
+      ['RES_CARE_4', 'Centre for Ageing Research & Education'],
+      ['RES_EID_9',  'Signature Research Programme in Emerging Infectious Diseases'],
+      ['RES_',       'Vice Dean Office, OOR'],
+      ['CORE_NA_5',  'Centre of Regulatory Excellence'],
+      ['CVR_ACAD',   'Centre for Vision Research'],
+      ['DUKE_NA',    'Planning & Administration Department'],
+      ['OPSHOD',     'Safety, Health, Emergency, Research Integrity & Compliance Department'],
+      ['CARE',       'Centre for Ageing Research & Education'],
+      ['CCSD',       'Centre for Clinician-Scientist Plus Development'],
+      ['CLL',        'Centre of Lifelong Learning'],
+      ['COMM',       'Communications & Strategic Relations Department'],
+      ['COP',        'Centre for Outbreak Preparedness'],
+      ['CORE',       'Centre of Regulatory Excellence'],
+      ['DEAN',       "Dean's Office"],
+      ['EDU',        'Vice Dean Office, OOE'],
+      ['LCPC',       'Lien Centre for Palliative Care'],
+      ['ADD',        'Appointments & Development Department'],
+      ['JOAM',       'Joint Office of Academic Medicine'],
+      ['FAC',        'Facilities Planning Department'],
+      ['FIN',        'Finance Department'],
+      ['FP',         'Facilities Planning Department'],
+      ['HR',         'Human Resources Department'],
+      ['OIS',        'Information Technology Department'],
+      ['OTED',       'Centre for Technology & Development'],
+      ['CCB',        'Centre for Computational Biology'],
+      ['CQM',        'Centre for Quantitative Medicine'],
+      ['CVMD',       'Signature Research Programme in Cardiovascular & Metabolic Disorders'],
+      ['CVR',        'Centre for Vision Research'],
+      ['EID',        'Signature Research Programme in Emerging Infectious Diseases'],
+      ['HSSR',       'Signature Research Programme in Health Services & Systems Research'],
+      ['SDGHI',      'SingHealth Duke-NUS Global Health Institute'],
+      ['NBD',        'Signature Research Programme in Neuroscience & Behavioural Disorders'],
+      ['DEV',        'Development Department'],
+      ['CSCB',       'Signature Research Programme in Cancer & Stem Cell Biology'],
+      ['RAD',        'Research Affairs Department'],
+      ['SRD',        'Sponsored Research Department'],
+      ['SHERIC',     'Safety, Health, Emergency, Research Integrity And Compliance Department'],
+    ];
+    for(const [key, label] of rules){
+      if(c.toUpperCase().includes(key.toUpperCase())){ dept=label; break; }
+    }
+
+    return {office, dept};
+  }
+
+  // Also load uploaded ref file if provided (overrides built-in)
+  const refMap={};
+  if(state.refFile){
+    const rwb=await readXLSX(state.refFile);
+    const rrows=XLSX.utils.sheet_to_json(rwb.Sheets[rwb.SheetNames[0]],{defval:'',raw:false});
+    rrows.forEach(r=>{
+      const code=flexGet(r,['fund','multifund','fundcode','code']);
+      const office=flexGet(r,['office']);
+      const dept=flexGet(r,['department','dept']);
+      if(code) refMap[code]={office,dept};
+    });
+  }
+
+  // Build serial → rows map for dedup
+  const serialMap={};
+  rows.forEach(row=>{
+    const serial=flexGet(row,['serialnumber','serial','sn']);
+    if(!serial||serial.length<4) return;
+    if(!serialMap[serial]) serialMap[serial]=[];
+    const assetNo=flexGet(row,['assetnumber','assetno','eccasset','asset']);
+    const eccNo=flexGet(row,['eccasset','ecc']);
+    const desc=flexGet(row,['description','desc']);
+    const capDate=flexGet(row,['capitalizedon','capdate','capitalized']);
+    const custodian=flexGet(row,['usercustodian','custodian','userid','user']);
+    const custodianName=flexGet(row,['custodianname','username','name']);
+    const room=flexGet(row,['sectionroom','room','location','section']);
+    const fundCode=flexGet(row,['multifund','fund','fundgroup']);
+    const assetClass=flexGet(row,['assetclass','class']);
+    const ref=refMap[fundCode]||lookupFund(fundCode);
+    serialMap[serial].push({
+      serial, assetNo, eccNo, desc, capDate, custodian, custodianName,
+      room, fundCode, assetClass,
+      office: ref.office, dept: ref.dept,
+      deviceType: detectDeviceType(desc),
+      ws1Status: '' // filled later if hw data available
+    });
+  });
+
+  // For each serial, pick canonical row (first) and note duplicates
+  Object.entries(serialMap).forEach(([serial,entries])=>{
+    const canonical={...entries[0]};
+    canonical.duplicateCount=entries.length;
+    canonical.allAssetNos=entries.map(e=>e.assetNo).filter(Boolean).join(', ');
+    // Try to match WS1/HW data
+    const hwMatch=state.hw.find(d=>d.serial===serial);
+    canonical.ws1Status=hwMatch?'Enrolled':'Not in WS1';
+    canonical.encrypted=hwMatch?hwMatch.encrypted:null;
+    state.fa.push(canonical);
+  });
+
+  state.faParsed=true;
+}
+
+// ════════════════════════════════════════
+//  ANALYSE ALL
+// ════════════════════════════════════════
+async function analyzeAll(){
+  const btn=document.getElementById('btn-analyze');
+  btn.disabled=true; btn.textContent='⏳ Processing...';
+  showToast('Parsing files...');
+  try{
+    if(state.swFiles.length) await parseSW();
+    if(state.hwFiles.length) await parseHW();
+    if(state.faFile) await parseFA();
+    document.getElementById('topbar-actions').style.display='flex';
+    markStepsDone();
+    goStep('overview');
+    showToast('Done!');
+  }catch(e){
+    alert('Error parsing files: '+e.message);
+    console.error(e);
+  }
+  btn.disabled=false; btn.textContent='▶ Analyse & View Dashboard';
+}
+
+function markStepsDone(){
+  if(state.swParsed) document.getElementById('stp-software').classList.add('done');
+  if(state.hwParsed) document.getElementById('stp-hardware').classList.add('done');
+  if(state.faParsed) document.getElementById('stp-assets').classList.add('done');
+  document.getElementById('stp-overview').classList.add('done');
+}
+
+// ════════════════════════════════════════
+//  RENDER: OVERVIEW
+// ════════════════════════════════════════
+function renderOverview(){
+  const now=new Date();
+  document.getElementById('ov-date').textContent=now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  const parts=[];
+  if(state.swParsed) parts.push(state.sw.length+' devices (SW)');
+  if(state.hwParsed) parts.push(state.hw.length+' devices (HW)');
+  if(state.faParsed) parts.push(state.fa.length+' assets (FA)');
+  document.getElementById('ov-sub').textContent=parts.join(' · ')||'No data loaded';
+
+  // SW traffic light
+  if(state.swParsed){
+    const total=state.sw.length;
+    const avGap=state.sw.filter(d=>!d.hasAV).length;
+    const blacklisted=state.sw.filter(d=>d.badApps.length>0).length;
+    const prohibited=state.sw.filter(d=>d.prohibitedApps.length>0).length;
+    const vpn=state.sw.filter(d=>d.vpnApps.length>0).length;
+    const risk=blacklisted+prohibited+vpn+avGap;
+    const pct=total?Math.round((1-risk/total)*100):100;
+    const col=pct>=90?'green':pct>=70?'amber':'red';
+    setTraffic('sw',col,pct+'%',[
+      {label:'AV Gap',val:avGap,col:'red'},
+      {label:'Blacklisted',val:blacklisted,col:'amber'},
+      {label:'Prohibited',val:prohibited,col:'amber'},
+      {label:'Bad VPN',val:vpn,col:'red'},
+    ]);
+  }
+
+  // HW traffic light
+  if(state.hwParsed){
+    const total=state.hw.length;
+    const enc=state.hw.filter(d=>d.encrypted).length;
+    const notEnc=total-enc;
+    const corp=state.hw.filter(d=>d.ownership.toLowerCase().includes('corporate')||d.ownership.toLowerCase().includes('dedicated')).length;
+    const byod=total-corp;
+    const pct=total?Math.round(enc/total*100):0;
+    const col=pct>=95?'green':pct>=80?'amber':'red';
+    setTraffic('hw',col,pct+'% encrypted',[
+      {label:'Total devices',val:total,col:'blue'},
+      {label:'Encrypted',val:enc,col:'green'},
+      {label:'Not encrypted',val:notEnc,col:'red'},
+      {label:'BYOD',val:byod,col:'amber'},
+    ]);
+  }
+
+  // FA traffic light
+  if(state.faParsed){
+    const total=state.fa.length;
+    const dups=state.fa.filter(d=>d.duplicateCount>1).length;
+    const notWS1=getWS1Required(state.fa).filter(d=>d.ws1Status==='Not in WS1').length;
+    const pct=total?Math.round((1-(dups+notWS1)/(total||1))*100):100;
+    const col=pct>=90?'green':pct>=70?'amber':'red';
+    setTraffic('fa',col,total+' assets',[
+      {label:'Duplicates',val:dups,col:'red'},
+      {label:'Not in WS1',val:notWS1,col:'amber'},
+      {label:'Enrolled',val:total-notWS1,col:'green'},
+      {label:'Clean',val:total-dups,col:'blue'},
+    ]);
+  }
+
+  // KPI strip
+  const kpis=[];
+  if(state.swParsed){
+    kpis.push({label:'Total SW Devices',val:state.sw.length,cls:'blue',sub:'from software export'});
+    kpis.push({label:'AV Gap',val:state.sw.filter(d=>!d.hasAV).length,cls:'red',sub:'no antivirus detected',drill:'avGap'});
+    kpis.push({label:'Blacklisted Apps',val:state.sw.filter(d=>d.badApps.length>0).length,cls:'amber',sub:'devices affected',drill:'blacklist'});
+    kpis.push({label:'Prohibited Apps',val:state.sw.filter(d=>d.prohibitedApps.length>0).length,cls:'purple',sub:'license compliance',drill:'prohibited'});
+  }
+  if(state.hwParsed){
+    kpis.push({label:'Total HW Devices',val:state.hw.length,cls:'green',sub:'from device files'});
+    const notEnc=state.hw.filter(d=>!d.encrypted).length;
+    kpis.push({label:'Unencrypted',val:notEnc,cls:notEnc>0?'red':'green',sub:'devices at risk',drill:'unencrypted'});
+  }
+  if(state.faParsed){
+    kpis.push({label:'FA Assets',val:state.fa.length,cls:'amber',sub:'unique serial numbers'});
+    kpis.push({label:'Duplicate Asset Nos.',val:state.fa.filter(d=>d.duplicateCount>1).length,cls:'red',sub:'need reconciliation',drill:'fa-dup'});
+    kpis.push({label:'Not in WS1',val:getWS1Required(state.fa).filter(d=>d.ws1Status==='Not in WS1').length,cls:'amber',sub:'not enrolled in MDM',drill:'fa-nows1'});
+  }
+  document.getElementById('kpi-strip').innerHTML=kpis.map(k=>{
+    const da=k.drill?' data-drill="'+k.drill+'" style="cursor:pointer"':'';
+    return '<div class="kpi '+k.cls+'"'+da+'>'
+      +'<div class="kpi-label">'+k.label+'</div>'
+      +'<div class="kpi-val">'+k.val+'</div>'
+      +(k.sub?'<div class="kpi-sub">'+k.sub+'</div>':'')
+      +'</div>';
+  }).join('');
+
+  // Charts
+  mkChart('ch-sw-pie');
+  mkChart('ch-enc-bar');
+  if(state.swParsed){
+    const avGap=state.sw.filter(d=>!d.hasAV).length;
+    const bl=state.sw.filter(d=>d.badApps.length>0).length;
+    const pr=state.sw.filter(d=>d.prohibitedApps.length>0).length;
+    const vp=state.sw.filter(d=>d.vpnApps.length>0).length;
+    const clean=state.sw.length-avGap-bl-pr-vp;
+    state.charts['ch-sw-pie']=new Chart(document.getElementById('ch-sw-pie'),{type:'doughnut',data:{labels:['Clean','AV Gap','Blacklisted','Prohibited','Bad VPN'],datasets:[{data:[Math.max(0,clean),avGap,bl,pr,vp],backgroundColor:['#3ddc84','#ff5c5c','#ffb84d','#b07fff','#4db8ff'],borderWidth:0}]},options:{plugins:{legend:{position:'right',labels:{color:'#6a80a0',font:{size:11}}}},cutout:'65%'}});
+  }
+  if(state.hwParsed){
+    const corp=state.hw.filter(d=>d.ownership.toLowerCase().includes('corporate')||d.ownership.toLowerCase().includes('dedicated'));
+    const byod=state.hw.filter(d=>!d.ownership.toLowerCase().includes('corporate')&&!d.ownership.toLowerCase().includes('dedicated'));
+    state.charts['ch-enc-bar']=new Chart(document.getElementById('ch-enc-bar'),{type:'bar',data:{labels:['Corporate','BYOD/Employee'],datasets:[{label:'Encrypted',data:[corp.filter(d=>d.encrypted).length,byod.filter(d=>d.encrypted).length],backgroundColor:'#3ddc84'},{label:'Not Encrypted',data:[corp.filter(d=>!d.encrypted).length,byod.filter(d=>!d.encrypted).length],backgroundColor:'#ff5c5c'}]},options:{responsive:true,plugins:{legend:{labels:{color:'#6a80a0'}}},scales:{x:{ticks:{color:'#6a80a0'},grid:{color:'#1e2a38'},stacked:true},y:{ticks:{color:'#6a80a0'},grid:{color:'#1e2a38'},stacked:true}}}});
+  }
+}
+
+function setTraffic(id,col,score,kpis){
+  const card=document.getElementById('tc-'+id);
+  card.className='traffic-card '+col;
+  const badgeEl=document.getElementById('tc-'+id+'-badge')||card.querySelector('.tc-badge');
+  if(badgeEl){badgeEl.className='tc-badge badge-'+col;badgeEl.textContent=col.toUpperCase()}
+  document.getElementById('tc-'+id+'-score').textContent=score;
+  const kpisEl=document.getElementById('tc-'+id+'-kpis');
+  if(kpisEl) kpisEl.innerHTML=kpis.map(k=>`<div class="tc-kpi-item">${k.label}<span class="tc-kpi-val" style="color:var(--${k.col})">${k.val}</span></div>`).join('');
+}
+
+// ════════════════════════════════════════
+//  RENDER: SOFTWARE
+// ════════════════════════════════════════
+function renderSoftware(){
+  if(!state.swParsed){document.getElementById('sw-content').innerHTML=`<div class="empty-state"><div class="es-icon">📋</div><div class="es-title">No software data</div><div class="es-sub">Upload WS1 software files on the Upload page</div></div>`;return}
+  const avGap=state.sw.filter(d=>!d.hasAV);
+  const bl=state.sw.filter(d=>d.badApps.length>0);
+  const pr=state.sw.filter(d=>d.prohibitedApps.length>0);
+  const vp=state.sw.filter(d=>d.vpnApps.length>0);
+  const dual=state.sw.filter(d=>d.badApps.length>0&&!d.hasAV);
+
+  document.getElementById('sw-content').innerHTML=`
+  <div class="kpi-strip" style="margin-bottom:20px">
+    ${kpiCard('Total Devices',state.sw.length,'blue','all scanned')}
+    ${kpiCard('AV Gap',avGap.length,'red','no antivirus','avGap')}
+    ${kpiCard('Blacklisted Apps',bl.length,'amber','devices affected','blacklist')}
+    ${kpiCard('Prohibited Apps',pr.length,'purple','devices affected','prohibited')}
+    ${kpiCard('Bad VPN',vp.length,'red','non-approved VPN','vpn')}
+    ${kpiCard('Dual Risk',dual.length,'red','AV gap + blacklist','dual')}
+  </div>
+  <div class="nav-tabs">
+    <button class="tab active" onclick="swTab('overview',this)">Overview</button>
+    <button class="tab" onclick="swTab('avGap',this)">AV Gap (${avGap.length})</button>
+    <button class="tab" onclick="swTab('blacklist',this)">Blacklisted (${bl.length})</button>
+    <button class="tab" onclick="swTab('prohibited',this)">Prohibited (${pr.length})</button>
+    <button class="tab" onclick="swTab('vpn',this)">Bad VPN (${vp.length})</button>
+    <button class="tab" onclick="swTab('scientific',this)">🔬 Scientific SW</button>
+    <button class="tab" onclick="swTab('all',this)">All Devices</button>
+  </div>
+  <div id="sw-tab-content"></div>`;
+  swTab('overview');
+}
+
+function swTab(name, btn){
+  document.querySelectorAll('#sw-content .tab').forEach(t=>t.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const wrap=document.getElementById('sw-tab-content');
+  if(name==='overview'){
+    const offices=[...new Set(state.sw.map(d=>d.office))].filter(Boolean);
+    wrap.innerHTML=`
+    <div class="chart-grid col2" style="margin-bottom:16px">
+      <div class="chart-box"><div class="chart-box-title">Risk per office</div><canvas id="ch-sw-office" style="max-height:200px"></canvas></div>
+      <div class="chart-box"><div class="chart-box-title">Platform breakdown</div><canvas id="ch-sw-platform" style="max-height:200px"></canvas></div>
+    </div>`;
+    // Office risk chart
+    const offCounts=offices.map(o=>({office:o,bl:state.sw.filter(d=>d.office===o&&d.badApps.length>0).length,av:state.sw.filter(d=>d.office===o&&!d.hasAV).length}));
+    mkChart('ch-sw-office');
+    state.charts['ch-sw-office']=new Chart(document.getElementById('ch-sw-office'),{type:'bar',data:{labels:offCounts.map(o=>o.office||'Unknown'),datasets:[{label:'AV Gap',data:offCounts.map(o=>o.av),backgroundColor:'#ff5c5c'},{label:'Blacklisted',data:offCounts.map(o=>o.bl),backgroundColor:'#ffb84d'}]},options:{responsive:true,plugins:{legend:{labels:{color:'#6a80a0',font:{size:11}}}},scales:{x:{ticks:{color:'#6a80a0',font:{size:10}},grid:{color:'#1e2a38'}},y:{ticks:{color:'#6a80a0'},grid:{color:'#1e2a38'}}}}});
+    const platforms=[...new Set(state.sw.map(d=>d.platform))].filter(Boolean);
+    mkChart('ch-sw-platform');
+    state.charts['ch-sw-platform']=new Chart(document.getElementById('ch-sw-platform'),{type:'doughnut',data:{labels:platforms,datasets:[{data:platforms.map(p=>state.sw.filter(d=>d.platform===p).length),backgroundColor:['#4db8ff','#3ddc84','#ffb84d','#b07fff'],borderWidth:0}]},options:{plugins:{legend:{position:'right',labels:{color:'#6a80a0',font:{size:11}}}},cutout:'65%'}});
+  } else if(name==='all'){
+    wrap.innerHTML=filterBar('sw-tbl-filter','sw-tbl-office','sw-tbl-platform','sw-tbl-own')+`<div class="tbl-wrap"><table class="data-table"><thead><tr><th>NUS-ID</th><th>Computer</th><th>Serial</th><th>Platform</th><th>Ownership</th><th>Office</th><th>AV</th><th>Blacklisted</th><th>Prohibited</th></tr></thead><tbody id="sw-all-body"></tbody></table></div>`;
+    renderSWTable(state.sw);
+  } else {
+    let data=[];
+    if(name==='avGap') data=state.sw.filter(d=>!d.hasAV);
+    else if(name==='blacklist') data=state.sw.filter(d=>d.badApps.length>0);
+    else if(name==='prohibited') data=state.sw.filter(d=>d.prohibitedApps.length>0);
+    else if(name==='vpn') data=state.sw.filter(d=>d.vpnApps.length>0);
+    else if(name==='dual') data=state.sw.filter(d=>d.badApps.length>0&&!d.hasAV);
+
+  if(name==='scientific'){
+    const hasSci=state.sw.filter(d=>d.sciApps&&d.sciApps.length>0);
+    const appCounts=SCI_APPS.map(a=>({
+      ...a,
+      count:state.sw.filter(d=>d.sciApps&&d.sciApps.find(s=>s.id===a.id)).length,
+      devices:state.sw.filter(d=>d.sciApps&&d.sciApps.find(s=>s.id===a.id))
+    })).filter(a=>a.count>0).sort((a,b)=>b.count-a.count);
+
+    const appCards=appCounts.length
+      ? appCounts.map(a=>'<div class="kpi teal" style="cursor:pointer;min-width:140px" data-drill-sci="'+a.id+'"><div class="kpi-label">'+a.label+'</div><div class="kpi-val" style="color:var(--teal)">'+a.count+'</div><div class="kpi-sub">devices</div></div>').join('')
+      : '<div style="color:var(--muted2);font-size:13px;padding:12px">No scientific software detected in this dataset</div>';
+
+    const offices=[...new Set(state.sw.map(d=>d.office))].filter(Boolean).sort();
+    const offRows=offices.map(o=>{
+      const devs=hasSci.filter(d=>d.office===o);
+      if(!devs.length) return '';
+      const apps=[...new Set(devs.flatMap(d=>d.sciApps.map(s=>s.label)))].join(', ');
+      return '<tr><td>'+o+'</td><td><b style="color:var(--teal)">'+devs.length+'</b></td><td style="font-size:11px">'+apps+'</td></tr>';
+    }).filter(Boolean).join('');
+
+    wrap.innerHTML=
+      '<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Detected scientific software — click any card to drill down</div>'
+      +'<div class="kpi-strip" style="flex-wrap:wrap;margin-bottom:0">'+appCards+'</div></div>'
+      +'<div class="chart-grid col2" style="margin-bottom:16px">'
+        +'<div class="sec"><div class="sec-title">Usage by office</div>'
+          +'<div class="tbl-wrap" style="margin-top:8px"><table class="data-table"><thead><tr><th>Office</th><th>Devices</th><th>Applications</th></tr></thead>'
+          +'<tbody>'+(offRows||'<tr><td colspan="3" style="color:var(--muted2)">No data</td></tr>')+'</tbody></table></div></div>'
+        +'<div class="sec"><div class="sec-title">App distribution</div><canvas id="ch-sci-bar" style="max-height:220px;margin-top:8px"></canvas></div>'
+      +'</div>'
+      +'<div id="sci-device-list"></div>';
+
+    mkChart('ch-sci-bar');
+    if(appCounts.length){
+      state.charts['ch-sci-bar']=new Chart(document.getElementById('ch-sci-bar'),{
+        type:'bar',
+        data:{labels:appCounts.map(a=>a.label),datasets:[{data:appCounts.map(a=>a.count),backgroundColor:'rgba(45,212,191,0.7)',borderRadius:4,borderSkipped:false}]},
+        options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6a80a0'},grid:{color:'#1e2a38'}},y:{ticks:{color:'#c0d0e0',font:{size:11}},grid:{display:false}}}}
+      });
+    }
+    // Delegated click — attached to wrap so it works after innerHTML is set
+    wrap.addEventListener('click',function sciClick(e){
+      const card=e.target.closest('[data-drill-sci]');
+      if(!card) return;
+      const appId=card.getAttribute('data-drill-sci');
+      const app=SCI_APPS.find(a=>a.id===appId);
+      if(!app) return;
+      const devs=state.sw.filter(d=>d.sciApps&&d.sciApps.find(s=>s.id===appId));
+      const list=document.getElementById('sci-device-list');
+      if(!list) return;
+      list.innerHTML=
+        '<div class="sec">'
+        +'<div class="sec-title" style="color:var(--teal);margin-bottom:10px">'+app.label+' — '+devs.length+' device'+(devs.length!==1?'s':'')+'</div>'
+        +'<div class="tbl-wrap"><table class="data-table">'
+          +'<thead><tr><th>NUS-ID</th><th>Computer</th><th>Serial</th><th>Platform</th><th>Ownership</th><th>Office</th><th>Detected as</th></tr></thead>'
+          +'<tbody>'
+          +devs.map(function(d){
+            const match=d.sciApps.find(s=>s.id===appId);
+            return '<tr>'
+              +'<td>'+(d.nusId||'—')+'</td>'
+              +'<td>'+(d.computerName||'—')+'</td>'
+              +'<td style="font-family:var(--mono);font-size:11px">'+d.serial+'</td>'
+              +'<td>'+(d.platform||'—')+'</td>'
+              +'<td>'+ownerPill(d.ownership)+'</td>'
+              +'<td>'+(d.office||'—')+'</td>'
+              +'<td style="font-size:11px">'+(match?match.raw:'—')+'</td>'
+              +'</tr>';
+          }).join('')
+          +'</tbody>'
+        +'</table></div>'
+        +'</div>';
+    });
+    return;
+  }
+
+    wrap.innerHTML=filterBar('sw-tbl-filter','sw-tbl-office','sw-tbl-platform','sw-tbl-own')+`<div class="tbl-wrap"><table class="data-table"><thead><tr><th>NUS-ID</th><th>Computer</th><th>Serial</th><th>Platform</th><th>Ownership</th><th>Office</th><th>AV</th><th>Issue Apps</th></tr></thead><tbody id="sw-all-body"></tbody></table></div>`;
+    renderSWTable(data);
+  }
+}
+
+function renderSWTable(data){
+  const tbody=document.getElementById('sw-all-body');
+  if(!tbody) return;
+  tbody.innerHTML=data.map(d=>`<tr>
+    <td>${d.nusId||'—'}</td><td>${d.computerName||'—'}</td><td style="font-family:var(--mono);font-size:11px">${d.serial}</td>
+    <td>${d.platform||'—'}</td><td>${ownerPill(d.ownership)}</td><td>${d.office||'—'}</td>
+    <td>${d.hasAV?'<span class="pill pill-green">✓ OK</span>':'<span class="pill pill-red">✗ Missing</span>'}</td>
+    <td style="font-size:11px">${[...d.badApps,...d.prohibitedApps,...d.vpnApps].join(', ')||'—'}</td>
+  </tr>`).join('');
+}
+
+// ════════════════════════════════════════
+//  RENDER: HARDWARE
+// ════════════════════════════════════════
+function renderHardware(){
+  if(!state.hwParsed){document.getElementById('hw-content').innerHTML=`<div class="empty-state"><div class="es-icon">💻</div><div class="es-title">No hardware data</div><div class="es-sub">Upload office device files on the Upload page</div></div>`;return}
+  const total=state.hw.length;
+  const enc=state.hw.filter(d=>d.encrypted).length;
+  const notEnc=total-enc;
+  const corp=state.hw.filter(d=>d.ownership.toLowerCase().includes('corporate')||d.ownership.toLowerCase().includes('dedicated'));
+  const byod=state.hw.filter(d=>!d.ownership.toLowerCase().includes('corporate')&&!d.ownership.toLowerCase().includes('dedicated'));
+  const win=state.hw.filter(d=>d.platform.toLowerCase().includes('win'));
+  const mac=state.hw.filter(d=>d.platform.toLowerCase().includes('mac'));
+
+  document.getElementById('hw-content').innerHTML=`
+  <div class="kpi-strip" style="margin-bottom:20px">
+    ${kpiCard('Total Devices',total,'blue','all devices')}
+    ${kpiCard('Encrypted',enc,'green',Math.round(enc/total*100)+'% of fleet')}
+    ${kpiCard('Unencrypted',notEnc,notEnc>0?'red':'green','action needed','unencrypted')}
+    ${kpiCard('Corporate',corp.length,'blue',Math.round(corp.length/total*100)+'% of fleet')}
+    ${kpiCard('BYOD/Employee',byod.length,'amber',Math.round(byod.length/total*100)+'% of fleet')}
+    ${kpiCard('Windows',win.length,'purple','')} ${kpiCard('macOS',mac.length,'teal','')}
+  </div>
+  <div class="nav-tabs">
+    <button class="tab active" onclick="hwTab('overview',this)">Overview</button>
+    <button class="tab" onclick="hwTab('unencrypted',this)">Unencrypted (${notEnc})</button>
+    <button class="tab" onclick="hwTab('byod',this)">BYOD (${byod.length})</button>
+    <button class="tab" onclick="hwTab('all',this)">All Devices</button>
+  </div>
+  <div id="hw-tab-content"></div>`;
+  hwTab('overview');
+}
+
+function hwTab(name, btn){
+  document.querySelectorAll('#hw-content .tab').forEach(t=>t.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const wrap=document.getElementById('hw-tab-content');
+  if(name==='overview'){
+    const offices=[...new Set(state.hw.map(d=>d.office))].filter(Boolean);
+    wrap.innerHTML=`<div class="chart-grid col3"><div class="chart-box"><div class="chart-box-title">Encryption overall</div><canvas id="ch-hw-enc-donut" style="max-height:200px"></canvas></div><div class="chart-box"><div class="chart-box-title">Encryption per office</div><canvas id="ch-hw-enc-office" style="max-height:200px"></canvas></div><div class="chart-box"><div class="chart-box-title">Ownership split</div><canvas id="ch-hw-own" style="max-height:200px"></canvas></div></div>`;
+    mkChart('ch-hw-enc-donut');mkChart('ch-hw-enc-office');mkChart('ch-hw-own');
+    state.charts['ch-hw-enc-donut']=new Chart(document.getElementById('ch-hw-enc-donut'),{type:'doughnut',data:{labels:['Encrypted','Not Encrypted'],datasets:[{data:[state.hw.filter(d=>d.encrypted).length,state.hw.filter(d=>!d.encrypted).length],backgroundColor:['#3ddc84','#ff5c5c'],borderWidth:0}]},options:{plugins:{legend:{position:'right',labels:{color:'#6a80a0'}}},cutout:'65%'}});
+    const offData=offices.map(o=>({o,enc:state.hw.filter(d=>d.office===o&&d.encrypted).length,not:state.hw.filter(d=>d.office===o&&!d.encrypted).length}));
+    state.charts['ch-hw-enc-office']=new Chart(document.getElementById('ch-hw-enc-office'),{type:'bar',data:{labels:offData.map(o=>o.o||'Unknown'),datasets:[{label:'Encrypted',data:offData.map(o=>o.enc),backgroundColor:'#3ddc84'},{label:'Not Encrypted',data:offData.map(o=>o.not),backgroundColor:'#ff5c5c'}]},options:{responsive:true,plugins:{legend:{labels:{color:'#6a80a0',font:{size:10}}}},scales:{x:{ticks:{color:'#6a80a0',font:{size:9}},grid:{color:'#1e2a38'},stacked:true},y:{ticks:{color:'#6a80a0'},grid:{color:'#1e2a38'},stacked:true}}}});
+    const ownTypes=[...new Set(state.hw.map(d=>d.ownership||'Unknown'))];
+    state.charts['ch-hw-own']=new Chart(document.getElementById('ch-hw-own'),{type:'doughnut',data:{labels:ownTypes,datasets:[{data:ownTypes.map(o=>state.hw.filter(d=>d.ownership===o).length),backgroundColor:['#4db8ff','#ffb84d','#b07fff','#3ddc84','#ff5c5c'],borderWidth:0}]},options:{plugins:{legend:{position:'right',labels:{color:'#6a80a0',font:{size:10}}}},cutout:'65%'}});
+  } else {
+    let data=state.hw;
+    if(name==='unencrypted') data=state.hw.filter(d=>!d.encrypted);
+    else if(name==='byod') data=state.hw.filter(d=>!d.ownership.toLowerCase().includes('corporate')&&!d.ownership.toLowerCase().includes('dedicated'));
+
+    const offices=[...new Set(state.hw.map(d=>d.office))].filter(Boolean).sort();
+    const platforms=[...new Set(state.hw.map(d=>d.platform))].filter(Boolean).sort();
+    const ownTypes=[...new Set(state.hw.map(d=>d.ownership))].filter(Boolean).sort();
+    const encTypes=['All','Encrypted','Not Encrypted'];
+
+    wrap.innerHTML=
+      '<div class="filter-bar" style="margin-bottom:12px">'
+        +'<input id="hw-tbl-search" placeholder="Search..." style="flex:1;min-width:160px" oninput="applyHwFilter()">'
+        +'<select id="hw-tbl-office" onchange="applyHwFilter()"><option value="">All offices</option>'+offices.map(o=>'<option>'+o+'</option>').join('')+'</select>'
+        +'<select id="hw-tbl-platform" onchange="applyHwFilter()"><option value="">All platforms</option>'+platforms.map(p=>'<option>'+p+'</option>').join('')+'</select>'
+        +'<select id="hw-tbl-own" onchange="applyHwFilter()"><option value="">All ownership</option>'+ownTypes.map(o=>'<option>'+o+'</option>').join('')+'</select>'
+        +'<select id="hw-tbl-enc" onchange="applyHwFilter()"><option value="">All encryption</option><option>Encrypted</option><option>Not Encrypted</option></select>'
+        +'<span id="hw-tbl-count" style="font-size:11px;color:var(--muted2);white-space:nowrap"></span>'
+      +'</div>'
+      +'<div class="tbl-wrap"><table class="data-table"><thead><tr><th>NUS-ID</th><th>Computer</th><th>Serial</th><th>Platform</th><th>Ownership</th><th>Office</th><th>Encryption</th><th>OS</th></tr></thead><tbody id="hw-tbl-body"></tbody></table></div>';
+
+    window._hwTableData = data;
+    renderHwTable(data);
+  }
+}
+
+function renderHwTable(data){
+  const tbody=document.getElementById('hw-tbl-body');
+  if(!tbody) return;
+  const count=document.getElementById('hw-tbl-count');
+  if(count) count.textContent=data.length+' rows';
+  tbody.innerHTML=data.map(d=>
+    '<tr>'
+    +'<td>'+(d.nusId||'—')+'</td>'
+    +'<td>'+(d.computerName||'—')+'</td>'
+    +'<td style="font-family:var(--mono);font-size:11px">'+d.serial+'</td>'
+    +'<td>'+(d.platform||'—')+'</td>'
+    +'<td>'+ownerPill(d.ownership)+'</td>'
+    +'<td>'+(d.office||'—')+'</td>'
+    +'<td>'+(d.encrypted?'<span class="pill pill-green">Encrypted</span>':'<span class="pill pill-red">Not Encrypted</span>')+'</td>'
+    +'<td style="font-size:11px">'+(d.os||'—')+'</td>'
+    +'</tr>'
+  ).join('');
+}
+
+function applyHwFilter(){
+  const q=(document.getElementById('hw-tbl-search')?.value||'').toLowerCase();
+  const off=document.getElementById('hw-tbl-office')?.value||'';
+  const plat=document.getElementById('hw-tbl-platform')?.value||'';
+  const own=document.getElementById('hw-tbl-own')?.value||'';
+  const enc=document.getElementById('hw-tbl-enc')?.value||'';
+  let data=(window._hwTableData||state.hw);
+  if(q)    data=data.filter(d=>Object.values(d).some(v=>String(v||'').toLowerCase().includes(q)));
+  if(off)  data=data.filter(d=>d.office===off);
+  if(plat) data=data.filter(d=>d.platform===plat);
+  if(own)  data=data.filter(d=>d.ownership===own);
+  if(enc)  data=data.filter(d=>(d.encrypted?'Encrypted':'Not Encrypted')===enc);
+  renderHwTable(data);
+}
+
+// ════════════════════════════════════════
+//  RENDER: FIXED ASSETS
+// ════════════════════════════════════════
+// Device types exempt from WS1 enrolment requirement
+// Default: Network, Printer, Monitor — user can toggle in Fixed Assets page
+function getExemptDevTypes(){
+  if(!window.faExemptDevTypes) window.faExemptDevTypes=new Set(['Network','Printer','Monitor']);
+  return window.faExemptDevTypes;
+}
+// Returns FA records that ARE expected to be in WS1 (non-exempt)
+function getWS1Required(data){
+  const exempt=getExemptDevTypes();
+  return data.filter(d=>!exempt.has(d.deviceType));
+}
+
+function getFaFiltered(){
+  let data = state.fa;
+  const selCls = window.faSelectedClasses;
+  const selDev = window.faSelectedDevTypes;
+  if(selCls && selCls.size>0) data=data.filter(d=>selCls.has(d.assetClass));
+  if(selDev && selDev.size>0) data=data.filter(d=>selDev.has(d.deviceType));
+  return data;
+}
+
+function renderAssets(){
+  if(!state.faParsed){document.getElementById('fa-content').innerHTML='<div class="empty-state"><div class="es-icon">🗂️</div><div class="es-title">No asset data</div><div class="es-sub">Upload the FA list from Finance on the Upload page</div></div>';return}
+  const assetClasses=[...new Set(state.fa.map(d=>d.assetClass))].filter(Boolean).sort();
+  if(!window.faSelectedClasses) window.faSelectedClasses = new Set();
+  const sel = window.faSelectedClasses;
+
+  const fa=getFaFiltered();
+  const total=fa.length;
+  const dups=fa.filter(d=>d.duplicateCount>1);
+  const ws1Req=getWS1Required(fa);
+  const notWS1=ws1Req.filter(d=>d.ws1Status==='Not in WS1');
+  const enrolled=ws1Req.filter(d=>d.ws1Status==='Enrolled');
+  const computers=fa.filter(d=>['Laptop','Desktop','Server'].includes(d.deviceType));
+  const exempt=getExemptDevTypes();
+
+  // Device type filter
+  if(!window.faSelectedDevTypes) window.faSelectedDevTypes = new Set();
+  const selDev = window.faSelectedDevTypes;
+  const deviceTypes=[...new Set(state.fa.map(d=>d.deviceType))].filter(Boolean).sort();
+  const allDevTypes=[...new Set(state.fa.map(d=>d.deviceType))].filter(Boolean).sort();
+
+  // Build class buttons
+  const classButtons='<button class="cls-btn'+(sel.size===0?' active':'')+'" data-cls="" onclick="setFaClass(this)">All</button>'
+    +assetClasses.map(c=>'<button class="cls-btn'+(sel.has(c)?' active':'')+'" data-cls="'+c+'" onclick="setFaClass(this)">'+c+'</button>').join('');
+
+  // Build device type filter buttons
+  const devTypeIcons={Laptop:'💻',Desktop:'🖥️',Server:'🖧',Tablet:'📱',Monitor:'🖵',Printer:'🖨️',Network:'🔌',Other:'📦'};
+  const devButtons='<button class="cls-btn dev-btn'+(selDev.size===0?' active':'')+'" data-dev="" onclick="setFaDev(this)">All</button>'
+    +deviceTypes.map(d=>'<button class="cls-btn dev-btn'+(selDev.has(d)?' active':'')+'" data-dev="'+d+'" onclick="setFaDev(this)">'+(devTypeIcons[d]||'')+(devTypeIcons[d]?' ':'')+d+'</button>').join('');
+
+  // Build WS1 exempt buttons
+  const exemptButtons=allDevTypes.map(d=>'<button class="cls-btn exempt-btn'+(exempt.has(d)?' active':'')+'" data-exempt="'+d+'" onclick="toggleExempt(this)">'+(devTypeIcons[d]||'')+(devTypeIcons[d]?' ':'')+d+'</button>').join('');
+
+  document.getElementById('fa-content').innerHTML=
+    '<div class="fa-class-bar"><span class="filter-label" style="margin-right:8px">Asset Class:</span>'+classButtons+'</div>'
+    +'<div class="fa-class-bar fa-dev-bar"><span class="filter-label" style="margin-right:8px">Device Type:</span>'+devButtons+'</div>'
+    +'<div class="fa-class-bar fa-exempt-bar"><span class="filter-label" style="margin-right:8px">Exempt from WS1:</span>'+exemptButtons+'<span class="exempt-note"> — crossed out = excluded from Not in WS1 count</span></div>'
+    +'<div class="kpi-strip" style="margin-bottom:20px">'
+      +kpiCard('Total Assets',total,'blue','unique serial numbers')
+      +kpiCard('Duplicate Asset Nos.',dups.length,'red','same serial → multiple asset nos.','fa-dup')
+      +kpiCard('Not in WS1',notWS1.length,'amber','not enrolled in MDM','fa-nows1')
+      +kpiCard('WS1 Enrolled',enrolled.length,'green',(total?Math.round(enrolled.length/total*100):0)+'% matched')
+      +kpiCard('Computers',computers.length,'purple','laptops + desktops')
+    +'</div>'
+    +'<div class="nav-tabs">'
+      +'<button class="tab active" onclick="faTab(&quot;overview&quot;,this)">Overview</button>'
+      +'<button class="tab" onclick="faTab(&quot;duplicates&quot;,this)">Duplicates ('+dups.length+')</button>'
+      +'<button class="tab" onclick="faTab(&quot;notWS1&quot;,this)">Not in WS1 ('+notWS1.length+')</button>'
+      +'<button class="tab" onclick="faTab(&quot;all&quot;,this)">All Assets</button>'
+    +'</div>'
+    +'<div id="fa-tab-content"></div>';
+  faTab('overview');
+}
+
+function setFaClass(btn){
+  const cls = btn.getAttribute('data-cls');
+  if(!window.faSelectedClasses) window.faSelectedClasses = new Set();
+  if(cls===''){
+    window.faSelectedClasses.clear();
+  } else {
+    if(window.faSelectedClasses.has(cls)) window.faSelectedClasses.delete(cls);
+    else window.faSelectedClasses.add(cls);
+  }
+  renderAssets();
+}
+
+function setFaDev(btn){
+  const dev = btn.getAttribute('data-dev');
+  if(!window.faSelectedDevTypes) window.faSelectedDevTypes = new Set();
+  if(dev===''){
+    window.faSelectedDevTypes.clear();
+  } else {
+    if(window.faSelectedDevTypes.has(dev)) window.faSelectedDevTypes.delete(dev);
+    else window.faSelectedDevTypes.add(dev);
+  }
+  renderAssets();
+}
+
+function toggleExempt(btn){
+  const dev=btn.getAttribute('data-exempt');
+  const exempt=getExemptDevTypes();
+  if(exempt.has(dev)) exempt.delete(dev);
+  else exempt.add(dev);
+  renderAssets();
+}
+
+function faTab(name, btn){
+  document.querySelectorAll('#fa-content .tab').forEach(t=>t.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const wrap=document.getElementById('fa-tab-content');
+  const fa=getFaFiltered();  // respects Asset Class filter
+
+  if(name==='overview'){
+    const types=[...new Set(fa.map(d=>d.deviceType))].filter(Boolean);
+    wrap.innerHTML='<div class="chart-grid col2"><div class="chart-box"><div class="chart-box-title">Device type breakdown</div><canvas id="ch-fa-type" style="max-height:200px"></canvas></div><div class="chart-box"><div class="chart-box-title">WS1 enrolment status</div><canvas id="ch-fa-ws1" style="max-height:200px"></canvas></div></div>';
+    mkChart('ch-fa-type');mkChart('ch-fa-ws1');
+    state.charts['ch-fa-type']=new Chart(document.getElementById('ch-fa-type'),{type:'doughnut',data:{labels:types,datasets:[{data:types.map(t=>fa.filter(d=>d.deviceType===t).length),backgroundColor:['#4db8ff','#3ddc84','#ffb84d','#b07fff','#ff5c5c','#2dd4bf'],borderWidth:0}]},options:{plugins:{legend:{position:'right',labels:{color:'#6a80a0',font:{size:11}}}},cutout:'60%'}});
+    const ws1ReqOv=getWS1Required(fa);state.charts['ch-fa-ws1']=new Chart(document.getElementById('ch-fa-ws1'),{type:'bar',data:{labels:['Enrolled','Not in WS1','Exempt'],datasets:[{data:[ws1ReqOv.filter(d=>d.ws1Status==='Enrolled').length,ws1ReqOv.filter(d=>d.ws1Status==='Not in WS1').length,fa.filter(d=>getExemptDevTypes().has(d.deviceType)).length],backgroundColor:['#3ddc84','#ffb84d'],borderWidth:0,borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6a80a0'},grid:{display:false}},y:{ticks:{color:'#6a80a0'},grid:{color:'#1e2a38'}}}}});
+  } else if(name==='duplicates'){
+    const data=fa.filter(d=>d.duplicateCount>1);
+    wrap.innerHTML='<div class="sec" style="margin-bottom:16px"><div class="sec-title" style="color:var(--red)">⚠ '+data.length+' assets with duplicate asset numbers</div><div class="sec-sub">Same serial number mapped to multiple asset numbers. Keep the canonical one, write off or merge the rest.</div></div><div class="tbl-wrap"><table class="data-table"><thead><tr><th>Serial</th><th>Description</th><th>Asset Class</th><th>All Asset Nos.</th><th>Count</th><th>Office</th><th>Custodian</th></tr></thead><tbody>'
+      +data.map(d=>'<tr><td style="font-family:var(--mono);font-size:11px">'+d.serial+'</td><td>'+(d.desc||'—')+'</td><td><span class="pill pill-purple">'+(d.assetClass||'—')+'</span></td><td style="font-family:var(--mono);font-size:10px;color:var(--amber)">'+(d.allAssetNos||'—')+'</td><td><span class="pill pill-red">'+d.duplicateCount+'</span></td><td>'+(d.office||'—')+'</td><td>'+(d.custodianName||d.custodian||'—')+'</td></tr>').join('')
+      +'</tbody></table></div>';
+  } else if(name==='notWS1'){
+    const exempt=getExemptDevTypes();
+    const data=getWS1Required(fa).filter(d=>d.ws1Status==='Not in WS1');
+    const skipped=fa.filter(d=>d.ws1Status==='Not in WS1'&&exempt.has(d.deviceType));
+    const exemptNote=skipped.length>0?' <span style="color:var(--muted2);font-size:11px">('+skipped.length+' exempt device'+(skipped.length>1?'s':'')+' hidden — '+[...exempt].join(', ')+')</span>':'';
+    wrap.innerHTML='<div class="sec" style="margin-bottom:16px"><div class="sec-title" style="color:var(--amber)">⚠ '+data.length+' assets not enrolled in WS1/MDM'+exemptNote+'</div><div class="sec-sub">These assets exist in the FA register but have no matching device in the WS1 device export.</div></div><div class="tbl-wrap"><table class="data-table"><thead><tr><th>Asset No.</th><th>Serial</th><th>Description</th><th>Asset Class</th><th>Device Type</th><th>Office</th><th>Dept</th><th>Custodian</th><th>Cap. Date</th></tr></thead><tbody>'
+      +data.map(d=>'<tr><td style="font-family:var(--mono);font-size:11px">'+(d.assetNo||'—')+'</td><td style="font-family:var(--mono);font-size:11px">'+d.serial+'</td><td>'+(d.desc||'—')+'</td><td><span class="pill pill-purple">'+(d.assetClass||'—')+'</span></td><td><span class="pill pill-blue">'+d.deviceType+'</span></td><td>'+(d.office||'—')+'</td><td>'+(d.dept||'—')+'</td><td>'+(d.custodianName||d.custodian||'—')+'</td><td>'+(d.capDate||'—')+'</td></tr>').join('')
+      +'</tbody></table></div>';
+  } else {
+    const offices=[...new Set(fa.map(d=>d.office))].filter(Boolean).sort();
+    const depts=[...new Set(fa.map(d=>d.dept))].filter(Boolean).sort();
+    const devTypes=[...new Set(fa.map(d=>d.deviceType))].filter(Boolean).sort();
+    const classes=[...new Set(fa.map(d=>d.assetClass))].filter(Boolean).sort();
+    const ws1Opts=['Enrolled','Not in WS1'];
+
+    wrap.innerHTML=
+      '<div class="filter-bar" style="margin-bottom:12px">'
+        +'<input id="fa-tbl-search" placeholder="Search..." style="flex:1;min-width:160px" oninput="applyFaFilter()">'
+        +'<select id="fa-tbl-office" onchange="applyFaFilter()"><option value="">All offices</option>'+offices.map(o=>'<option>'+o+'</option>').join('')+'</select>'
+        +'<select id="fa-tbl-dept" onchange="applyFaFilter()"><option value="">All departments</option>'+depts.map(d=>'<option>'+d+'</option>').join('')+'</select>'
+        +'<select id="fa-tbl-devtype" onchange="applyFaFilter()"><option value="">All device types</option>'+devTypes.map(d=>'<option>'+d+'</option>').join('')+'</select>'
+        +'<select id="fa-tbl-class" onchange="applyFaFilter()"><option value="">All asset classes</option>'+classes.map(c=>'<option>'+c+'</option>').join('')+'</select>'
+        +'<select id="fa-tbl-ws1" onchange="applyFaFilter()"><option value="">All WS1 status</option>'+ws1Opts.map(w=>'<option>'+w+'</option>').join('')+'</select>'
+        +'<span id="fa-tbl-count" style="font-size:11px;color:var(--muted2);white-space:nowrap"></span>'
+      +'</div>'
+      +'<div class="tbl-wrap"><table class="data-table"><thead><tr><th>NUS-ID</th><th>Serial</th><th>Description</th><th>Device Type</th><th>Office</th><th>Dept</th><th>WS1</th><th>Dups</th></tr></thead><tbody id="fa-tbl-body"></tbody></table></div>';
+
+    window._faTableData = fa;
+    renderFaTable(fa);
+  }
+}
+
+function renderFaTable(data){
+  const tbody=document.getElementById('fa-tbl-body');
+  if(!tbody) return;
+  const count=document.getElementById('fa-tbl-count');
+  if(count) count.textContent=data.length+' rows';
+  tbody.innerHTML=data.map(d=>
+    '<tr>'
+    +'<td style="font-family:var(--mono);font-size:11px">'+(d.custodian||'—')+'</td>'
+    +'<td style="font-family:var(--mono);font-size:11px">'+d.serial+'</td>'
+    +'<td>'+(d.desc||'—')+'</td>'
+    +'<td><span class="pill pill-blue">'+d.deviceType+'</span></td>'
+    +'<td>'+(d.office||'—')+'</td>'
+    +'<td>'+(d.dept||'—')+'</td>'
+    +'<td>'+(d.ws1Status==='Enrolled'?'<span class="pill pill-green">✓ Enrolled</span>':'<span class="pill pill-amber">Not in WS1</span>')+'</td>'
+    +'<td>'+(d.duplicateCount>1?'<span class="pill pill-red">'+d.duplicateCount+'</span>':'<span class="pill pill-grey">1</span>')+'</td>'
+    +'</tr>'
+  ).join('');
+}
+
+function applyFaFilter(){
+  const q=(document.getElementById('fa-tbl-search')?.value||'').toLowerCase();
+  const off=document.getElementById('fa-tbl-office')?.value||'';
+  const dept=document.getElementById('fa-tbl-dept')?.value||'';
+  const dev=document.getElementById('fa-tbl-devtype')?.value||'';
+  const cls=document.getElementById('fa-tbl-class')?.value||'';
+  const ws1=document.getElementById('fa-tbl-ws1')?.value||'';
+  let data=(window._faTableData||state.fa);
+  if(q)    data=data.filter(d=>['assetNo','serial','desc','office','dept','custodianName','fundCode'].some(k=>String(d[k]||'').toLowerCase().includes(q)));
+  if(off)  data=data.filter(d=>d.office===off);
+  if(dept) data=data.filter(d=>d.dept===dept);
+  if(dev)  data=data.filter(d=>d.deviceType===dev);
+  if(cls)  data=data.filter(d=>d.assetClass===cls);
+  if(ws1)  data=data.filter(d=>d.ws1Status===ws1);
+  renderFaTable(data);
+}
+
+// ════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════
+function kpiCard(label,val,cls,sub,drill){
+  const drillAttr = drill ? ` data-drill="${drill}"` : '';
+  const cursor    = drill ? ' style="cursor:pointer"' : '';
+  return '<div class="kpi '+cls+'"'+drillAttr+cursor+'>'
+    +'<div class="kpi-label">'+label+'</div>'
+    +'<div class="kpi-val">'+val+'</div>'
+    +(sub?'<div class="kpi-sub">'+sub+'</div>':'')
+    +'</div>';
+}
+
+function ownerPill(own){
+  const o=(own||'').toLowerCase();
+  if(o.includes('corporate')||o.includes('dedicated')) return `<span class="pill pill-blue">${own}</span>`;
+  if(o.includes('employee')||o.includes('byod')) return `<span class="pill pill-amber">${own}</span>`;
+  return `<span class="pill pill-grey">${own||'Unknown'}</span>`;
+}
+
+function filterBar(searchId,officeId,platformId,ownId){
+  const offices=[...new Set(state.sw.map(d=>d.office))].filter(Boolean);
+  const platforms=[...new Set(state.sw.map(d=>d.platform))].filter(Boolean);
+  const owns=[...new Set(state.sw.map(d=>d.ownership))].filter(Boolean);
+  return `<div class="filter-bar" style="margin-bottom:12px">
+    <input id="${searchId}" placeholder="Search..." style="flex:1;min-width:140px" oninput="applySwFilter()">
+    <select id="${officeId}" onchange="applySwFilter()"><option value="">All offices</option>${offices.map(o=>`<option>${o}</option>`).join('')}</select>
+    <select id="${platformId}" onchange="applySwFilter()"><option value="">All platforms</option>${platforms.map(p=>`<option>${p}</option>`).join('')}</select>
+    <select id="${ownId}" onchange="applySwFilter()"><option value="">All ownership</option>${owns.map(o=>`<option>${o}</option>`).join('')}</select>
+  </div>`;
+}
+function applySwFilter(){
+  const q=(document.getElementById('sw-tbl-filter')?.value||'').toLowerCase();
+  const off=document.getElementById('sw-tbl-office')?.value||'';
+  const plat=document.getElementById('sw-tbl-platform')?.value||'';
+  const own=document.getElementById('sw-tbl-own')?.value||'';
+  const rows=document.querySelectorAll('#sw-all-body tr');
+  rows.forEach(r=>{
+    const txt=r.textContent.toLowerCase();
+    r.style.display=((!q||txt.includes(q))&&(!off||txt.includes(off.toLowerCase()))&&(!plat||txt.includes(plat.toLowerCase()))&&(!own||txt.includes(own.toLowerCase())))?'':'none';
+  });
+}
+
+function mkChart(id){
+  if(state.charts[id]){state.charts[id].destroy();delete state.charts[id]}
+}
+
+
+// ════════════════════════════════════════
+//  DRILL-DOWN MODAL
+// ════════════════════════════════════════
+function openDrill(type){
+  const modal = document.getElementById('modal-drill');
+  const titleEl = document.getElementById('drill-title');
+  const bodyEl  = document.getElementById('drill-body');
+  let data=[], cols=[], title='';
+
+  if(type==='avGap'){
+    title='AV Gap — Devices without antivirus';
+    data=state.sw.filter(d=>!d.hasAV);
+    cols=['serial','nusId','computerName','platform','ownership','office'];
+  } else if(type==='blacklist'){
+    title='Blacklisted Apps — Devices affected';
+    data=state.sw.filter(d=>d.badApps.length>0);
+    cols=['serial','nusId','computerName','platform','ownership','office','badApps'];
+  } else if(type==='prohibited'){
+    title='Potential License Compliance — Devices affected';
+    data=state.sw.filter(d=>d.prohibitedApps.length>0);
+    cols=['serial','nusId','computerName','platform','ownership','office','prohibitedApps'];
+  } else if(type==='vpn'){
+    title='Non-Approved VPN — Devices affected';
+    data=state.sw.filter(d=>d.vpnApps.length>0);
+    cols=['serial','nusId','computerName','platform','ownership','office','vpnApps'];
+  } else if(type==='dual'){
+    title='Dual Risk — AV Gap + Blacklisted Apps';
+    data=state.sw.filter(d=>d.badApps.length>0&&!d.hasAV);
+    cols=['serial','nusId','computerName','platform','ownership','office','badApps'];
+  } else if(type==='unencrypted'){
+    title='Unencrypted Devices';
+    data=state.hw.filter(d=>!d.encrypted);
+    cols=['serial','nusId','computerName','platform','ownership','office','encryptionRaw','os'];
+  } else if(type==='fa-dup'){
+    title='Duplicate Asset Numbers — Same serial mapped to multiple asset numbers';
+    data=state.fa.filter(d=>d.duplicateCount>1);
+    cols=['serial','assetNo','allAssetNos','duplicateCount','desc','deviceType','office','custodianName'];
+  } else if(type==='fa-nows1'){
+    title='Fixed Assets Not Enrolled in WS1 (excludes exempt device types)';
+    data=getWS1Required(state.fa).filter(d=>d.ws1Status==='Not in WS1');
+    cols=['serial','assetNo','desc','deviceType','office','dept','custodianName','capDate'];
+  }
+
+  drillData=[...data];
+  drillCols=[...cols];
+  titleEl.textContent=title+' ('+data.length+')';
+
+  if(!data.length){
+    bodyEl.innerHTML='<div class="empty-state"><div class="es-icon">✅</div><div class="es-title">No issues found</div></div>';
+    modal.style.display='flex'; return;
+  }
+
+  // Header labels
+  const labelMap={
+    serial:'Serial No.',nusId:'NUS-ID',computerName:'Computer',platform:'Platform',
+    ownership:'Ownership',office:'Office',badApps:'Blacklisted Apps',
+    prohibitedApps:'Prohibited Apps',vpnApps:'VPN Apps',encryptionRaw:'Encryption',
+    os:'OS',assetNo:'Asset No.',allAssetNos:'All Asset Nos.',duplicateCount:'Dup Count',
+    desc:'Description',deviceType:'Device Type',dept:'Department',
+    custodianName:'Custodian',capDate:'Cap. Date'
+  };
+
+  const headers=cols.map(c=>labelMap[c]||c);
+  const rows=data.map(d=>
+    '<tr>'+cols.map(c=>{
+      const v=d[c];
+      if(Array.isArray(v)) return '<td style="font-size:11px">'+( v.join(', ')||'—')+'</td>';
+      if(c==='ownership') return '<td>'+ownerPill(String(v||''))+'</td>';
+      if(c==='encrypted'||c==='encryptionRaw'){
+        const enc=String(v||'');
+        return '<td>'+(enc==='Encrypted'?'<span class="pill pill-green">Encrypted</span>':'<span class="pill pill-red">'+( enc||'Not Encrypted')+'</span>')+'</td>';
+      }
+      if(c==='duplicateCount') return '<td><span class="pill '+(Number(v)>1?'pill-red':'pill-grey')+'">'+v+'</span></td>';
+      if(c==='serial'||c==='assetNo'||c==='allAssetNos') return '<td style="font-family:var(--mono);font-size:11px">'+( String(v||'—'))+'</td>';
+      return '<td>'+( String(v||'—'))+'</td>';
+    }).join('')+'</tr>'
+  ).join('');
+
+  bodyEl.innerHTML=`
+    <div style="margin-bottom:12px;font-size:12px;color:var(--muted2)">${data.length} record${data.length!==1?'s':''} found</div>
+    <div class="tbl-wrap">
+      <table class="data-table">
+        <thead><tr>${headers.map(h=>'<th>'+h+'</th>').join('')}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  modal.style.display='flex';
+}
+
+function exportDrill(){
+  if(!drillData.length){showToast('Nothing to export');return;}
+  const labelMap={
+    serial:'Serial No.',nusId:'NUS-ID',computerName:'Computer',platform:'Platform',
+    ownership:'Ownership',office:'Office',badApps:'Blacklisted Apps',
+    prohibitedApps:'Prohibited Apps',vpnApps:'VPN Apps',encryptionRaw:'Encryption',
+    os:'OS',assetNo:'Asset No.',allAssetNos:'All Asset Nos.',duplicateCount:'Dup Count',
+    desc:'Description',deviceType:'Device Type',dept:'Department',
+    custodianName:'Custodian',capDate:'Cap. Date'
+  };
+  const cols=drillCols;
+  const headers=cols.map(c=>labelMap[c]||c);
+  const rows=drillData.map(d=>cols.map(c=>{
+    const v=d[c];
+    if(Array.isArray(v)) return '"'+v.join('; ')+'"';
+    return '"'+String(v||'').replace(/"/g,'""')+'"';
+  }).join(','));
+  const csv=[headers.join(','),...rows].join('\n');
+  downloadCSV(csv,'Drill_Export.csv');
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+// ════════════════════════════════════════
+//  EXPORTS
+// ════════════════════════════════════════
+// ════════════════════════════════════════
+//  EXPORT MODAL — search + preview
+// ════════════════════════════════════════
+let expCurrentType = 'sw';
+let expAllRows = [];   // full dataset for current type
+let expCols   = [];    // column keys
+let expLabels = [];    // column header labels
+
+const EXP_LABEL_MAP={
+  serial:'Serial No.',nusId:'NUS-ID',computerName:'Computer',platform:'Platform',
+  ownership:'Ownership',office:'Office',badApps:'Blacklisted Apps',
+  prohibitedApps:'Prohibited Apps',vpnApps:'VPN Apps',encryptionRaw:'Encryption',
+  encrypted:'Encrypted',os:'OS',assetNo:'Asset No.',allAssetNos:'All Asset Nos.',
+  duplicateCount:'Dup Count',desc:'Description',deviceType:'Device Type',
+  dept:'Department',custodianName:'Custodian',custodian:'Custodian ID',
+  capDate:'Cap. Date',ws1Status:'WS1 Status',hasAV:'Antivirus',
+  fundCode:'Fund Code',assetClass:'Asset Class',office:'Office',model:'Model',
+  source:'Source Sheet',sourceFile:'Source File',month:'Month'
+};
+
+function showExportModal(){
+  document.getElementById('modal-export').style.display='flex';
+  selectExpOpt(document.querySelector('.exp-opt[data-exp="sw"]'),'sw');
+}
+
+function selectExpOpt(btn, type){
+  document.querySelectorAll('.exp-opt').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  expCurrentType = type;
+  document.getElementById('exp-search').value='';
+  loadExpData(type);
+}
+
+function loadExpData(type){
+  let rows=[], cols=[];
+  if(type==='sw'){
+    rows=state.sw.map(d=>({...d,hasAV:d.hasAV?'Yes':'No',badApps:d.badApps.join('; '),prohibitedApps:d.prohibitedApps.join('; '),vpnApps:d.vpnApps.join('; ')}));
+    cols=['nusId','computerName','serial','platform','ownership','office','hasAV','badApps','prohibitedApps','vpnApps','month'];
+  } else if(type==='hw'){
+    rows=state.hw.map(d=>({...d,encrypted:d.encrypted?'Encrypted':'Not Encrypted'}));
+    cols=['nusId','computerName','serial','platform','ownership','office','encrypted','os','model','sourceFile'];
+  } else if(type==='fa'){
+    rows=state.fa;
+    cols=['assetNo','serial','desc','assetClass','deviceType','office','dept','custodianName','capDate','ws1Status','duplicateCount','fundCode'];
+  } else if(type==='nows1'){
+    rows=getWS1Required(state.fa).filter(d=>d.ws1Status==='Not in WS1');
+    cols=['assetNo','serial','desc','assetClass','deviceType','office','dept','custodianName','capDate','fundCode'];
+  } else if(type==='dups'){
+    rows=state.fa.filter(d=>d.duplicateCount>1);
+    cols=['serial','assetNo','allAssetNos','duplicateCount','desc','assetClass','office','dept','custodianName'];
+  } else if(type==='avGap'){
+    rows=state.sw.filter(d=>!d.hasAV);
+    cols=['nusId','computerName','serial','platform','ownership','office','month'];
+  } else if(type==='blacklist'){
+    rows=state.sw.filter(d=>d.badApps.length>0).map(d=>({...d,badApps:d.badApps.join('; ')}));
+    cols=['nusId','computerName','serial','platform','ownership','office','badApps'];
+  } else if(type==='combined'){
+    const swR=state.sw.map(d=>({Module:'Software',ID:d.nusId,Computer:d.computerName,Serial:d.serial,Platform:d.platform,Ownership:d.ownership,Office:d.office,Notes:d.hasAV?'AV OK':'AV Missing',Issues:[...d.badApps,...d.prohibitedApps,...d.vpnApps].join('; ')}));
+    const hwR=state.hw.map(d=>({Module:'Hardware',ID:d.nusId,Computer:d.computerName,Serial:d.serial,Platform:d.platform,Ownership:d.ownership,Office:d.office,Notes:d.encrypted?'Encrypted':'Not Encrypted',Issues:''}));
+    const faR=state.fa.map(d=>({Module:'FixedAsset',ID:d.custodian,Computer:d.desc,Serial:d.serial,Platform:d.deviceType,Ownership:d.assetClass,Office:d.office,Notes:d.ws1Status,Issues:d.duplicateCount>1?'Duplicate asset nos':''}));
+    rows=[...swR,...hwR,...faR];
+    cols=['Module','ID','Computer','Serial','Platform','Ownership','Office','Notes','Issues'];
+  } else if(type==='summary'){
+    rows=[];
+    if(state.swParsed){const t=state.sw.length;rows.push({Area:'Software',TotalDevices:t,Issue1:'AV Gap: '+state.sw.filter(d=>!d.hasAV).length,Issue2:'Blacklisted: '+state.sw.filter(d=>d.badApps.length>0).length,Issue3:'Prohibited: '+state.sw.filter(d=>d.prohibitedApps.length>0).length,Status:''});}
+    if(state.hwParsed){const t=state.hw.length;const enc=state.hw.filter(d=>d.encrypted).length;rows.push({Area:'Hardware',TotalDevices:t,Issue1:'Not Encrypted: '+(t-enc),Issue2:'BYOD: '+state.hw.filter(d=>!d.ownership.toLowerCase().includes('corporate')).length,Issue3:'',Status:Math.round(enc/t*100)+'% encrypted'});}
+    if(state.faParsed){rows.push({Area:'Fixed Assets',TotalDevices:state.fa.length,Issue1:'Duplicates: '+state.fa.filter(d=>d.duplicateCount>1).length,Issue2:'Not in WS1: '+getWS1Required(state.fa).filter(d=>d.ws1Status==='Not in WS1').length,Issue3:'',Status:''});}
+    cols=['Area','TotalDevices','Issue1','Issue2','Issue3','Status'];
+  }
+  expCols=cols;
+  expLabels=cols.map(c=>EXP_LABEL_MAP[c]||c);
+  expAllRows=rows;
+  renderExpPreview(rows);
+}
+
+function renderExpPreview(rows){
+  // Header
+  document.getElementById('exp-thead').innerHTML='<tr>'+expLabels.map(l=>'<th>'+l+'</th>').join('')+'</tr>';
+  // Body — cap at 500 rows for preview performance
+  const preview=rows.slice(0,500);
+  const q=(document.getElementById('exp-search').value||'').toLowerCase();
+  document.getElementById('exp-tbody').innerHTML=preview.map(function(row){
+    return '<tr>'+expCols.map(function(c){
+      const v=String(row[c]||'');
+      const isMono=(c==='serial'||c==='assetNo'||c==='allAssetNos');
+      let cell=v;
+      if(q && v.toLowerCase().includes(q)){
+        const si=v.toLowerCase().indexOf(q);
+        cell=v.slice(0,si)+'<mark style="background:var(--amber-d);color:var(--amber);border-radius:2px;padding:0 1px">'+v.slice(si,si+q.length)+'</mark>'+v.slice(si+q.length);
+      }
+      return '<td'+(isMono?' style="font-family:var(--mono);font-size:11px"':'')+'>'+cell+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+  // Row count
+  const total=rows.length;
+  document.getElementById('exp-count').textContent=(q?total+' of '+expAllRows.length:total)+' rows'+(total>500?' (preview: first 500)':'');
+}
+
+
+function filterExpPreview(){
+  const q=document.getElementById('exp-search').value.toLowerCase().trim();
+  if(!q){ renderExpPreview(expAllRows); return; }
+  const filtered=expAllRows.filter(row=>
+    expCols.some(c=>String(row[c]||'').toLowerCase().includes(q))
+  );
+  renderExpPreview(filtered);
+}
+
+function downloadCurrentExp(){
+  const q=document.getElementById('exp-search').value.toLowerCase().trim();
+  const rows=q ? expAllRows.filter(row=>expCols.some(c=>String(row[c]||'').toLowerCase().includes(q))) : expAllRows;
+  if(!rows.length){showToast('Nothing to export');return;}
+  const csv=[expLabels.join(','),...rows.map(row=>expCols.map(c=>'"'+String(row[c]||'').replace(/"/g,'""')+'"').join(','))].join('\n');
+  const names={sw:'Software_Report',hw:'Hardware_Report',fa:'FixedAsset_Report',nows1:'NotInWS1_Report',dups:'Duplicates_Report',avGap:'AVGap_Report',blacklist:'Blacklist_Report',combined:'Combined_Report',summary:'Executive_Summary'};
+  downloadCSV(csv,(names[expCurrentType]||'Export')+'.csv');
+  showToast('Downloaded '+(rows.length)+' rows');
+}
+function toCSV(rows,cols){return[cols.join(','),...rows.map(r=>cols.map(c=>'"'+(r[c]||'').toString().replace(/"/g,'""')+'"').join(','))].join('\n')}
+function downloadCSV(content,name){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:'text/csv'}));a.download=name;a.click()}
+
+function exportSW(){
+  if(!state.swParsed){alert('No software data');return}
+  const cols=['nusId','computerName','serial','platform','ownership','office','hasAV','badApps','prohibitedApps','vpnApps'];
+  downloadCSV(toCSV(state.sw.map(d=>({...d,hasAV:d.hasAV?'Yes':'No',badApps:d.badApps.join(';'),prohibitedApps:d.prohibitedApps.join(';'),vpnApps:d.vpnApps.join(';')})),cols),'Software_Report.csv');
+}
+function exportHW(){
+  if(!state.hwParsed){alert('No hardware data');return}
+  const cols=['nusId','computerName','serial','platform','ownership','office','encrypted','os','sourceFile'];
+  downloadCSV(toCSV(state.hw.map(d=>({...d,encrypted:d.encrypted?'Encrypted':'Not Encrypted'})),cols),'Hardware_Report.csv');
+}
+function exportFA(){
+  if(!state.faParsed){alert('No FA data');return}
+  const cols=['assetNo','serial','desc','deviceType','office','dept','custodian','custodianName','capDate','ws1Status','duplicateCount','allAssetNos'];
+  downloadCSV(toCSV(state.fa,cols),'FixedAsset_Report.csv');
+}
+function exportCSV(mod){if(mod==='sw')exportSW();else if(mod==='hw')exportHW();else if(mod==='fa')exportFA();}
+function exportAllSeparate(){exportSW();setTimeout(exportHW,300);setTimeout(exportFA,600);}
+
+function exportCombinedCSV(){
+  const rows=[];
+  if(state.swParsed) state.sw.forEach(d=>rows.push({Module:'Software',ID:d.nusId,Computer:d.computerName,Serial:d.serial,Platform:d.platform,Ownership:d.ownership,Office:d.office,AV:d.hasAV?'Yes':'No',Issues:[...d.badApps,...d.prohibitedApps,...d.vpnApps].join(';')}));
+  if(state.hwParsed) state.hw.forEach(d=>rows.push({Module:'Hardware',ID:d.nusId,Computer:d.computerName,Serial:d.serial,Platform:d.platform,Ownership:d.ownership,Office:d.office,Encrypted:d.encrypted?'Yes':'No',Issues:''}));
+  if(state.faParsed) state.fa.forEach(d=>rows.push({Module:'FixedAsset',ID:d.custodian,Computer:d.desc,Serial:d.serial,Platform:d.deviceType,Ownership:'',Office:d.office,Notes:d.ws1Status,Issues:d.duplicateCount>1?'Duplicate asset nos':''}));
+  downloadCSV(toCSV(rows,['Module','ID','Computer','Serial','Platform','Ownership','Office','Notes','Issues']),'IT_Audit_Combined.csv');
+}
+
+function exportSummaryCSV(){
+  const rows=[];
+  if(state.swParsed){const t=state.sw.length;rows.push({Area:'Software',TotalDevices:t,Issue1:'AV Gap: '+state.sw.filter(d=>!d.hasAV).length,Issue2:'Blacklisted: '+state.sw.filter(d=>d.badApps.length>0).length,Issue3:'Prohibited: '+state.sw.filter(d=>d.prohibitedApps.length>0).length,Status:''});}
+  if(state.hwParsed){const t=state.hw.length;const enc=state.hw.filter(d=>d.encrypted).length;rows.push({Area:'Hardware',TotalDevices:t,Issue1:'Not Encrypted: '+(t-enc),Issue2:'BYOD: '+state.hw.filter(d=>!d.ownership.toLowerCase().includes('corporate')).length,Issue3:'',Status:Math.round(enc/t*100)+'% encrypted'});}
+  if(state.faParsed){rows.push({Area:'Fixed Assets',TotalDevices:state.fa.length,Issue1:'Duplicates: '+state.fa.filter(d=>d.duplicateCount>1).length,Issue2:'Not in WS1: '+state.fa.filter(d=>d.ws1Status!=='Enrolled').length,Issue3:'',Status:''});}
+  downloadCSV(toCSV(rows,['Area','TotalDevices','Issue1','Issue2','Issue3','Status']),'IT_Audit_Summary.csv');
+}
+
+function resetAll(){
+  if(!confirm('Reset all data and start over?')) return;
+
+  // 1. Destroy all charts to free memory and prevent canvas reuse errors
+  Object.values(state.charts).forEach(c=>{ try{c.destroy();}catch(e){} });
+
+  // 2. Reset state
+  Object.assign(state,{swFiles:[],hwFiles:[],faFile:null,refFile:null,
+    sw:[],hw:[],fa:[],ref:[],
+    swParsed:false,hwParsed:false,faParsed:false,charts:{}});
+
+  // 3. Clear file chips and drop zones
+  ['sw','hw','fa','ref'].forEach(m=>{
+    const chips=document.getElementById('chips-'+m);
+    if(chips) chips.innerHTML='';
+    const dz=document.getElementById('dz-'+m);
+    if(dz) dz.classList.remove('loaded','drag');
+    const fi=document.getElementById('fi-'+m);
+    if(fi) fi.value='';
+  });
+
+  // 4. Reset module cards
+  ['sw','hw','fa'].forEach(id=>{
+    const card=document.getElementById('card-'+id);
+    if(card) card.classList.remove('loaded');
+    const st=document.getElementById(id+'-status');
+    if(st){st.textContent='PENDING';st.className='mod-status pending';}
+  });
+
+  // 5. Clear module content panels back to empty state
+  document.getElementById('sw-content').innerHTML='<div class="empty-state"><div class="es-icon">📋</div><div class="es-title">No software data</div><div class="es-sub">Upload WS1 software files on the Upload page</div></div>';
+  document.getElementById('hw-content').innerHTML='<div class="empty-state"><div class="es-icon">💻</div><div class="es-title">No hardware data</div><div class="es-sub">Upload office device files on the Upload page</div></div>';
+  document.getElementById('fa-content').innerHTML='<div class="empty-state"><div class="es-icon">🗂️</div><div class="es-title">No asset data</div><div class="es-sub">Upload the FA list from Finance on the Upload page</div></div>';
+
+  // 6. Clear overview KPIs and traffic lights
+  document.getElementById('kpi-strip').innerHTML='';
+  ['sw','hw','fa'].forEach(id=>{
+    const tc=document.getElementById('tc-'+id);
+    if(tc){ tc.className='traffic-card grey'; }
+    const score=document.getElementById('tc-'+id+'-score');
+    if(score) score.textContent='—';
+    const badge=document.getElementById('tc-'+id+'-badge');
+    if(badge){ badge.className='tc-badge badge-grey'; badge.textContent='NO DATA'; }
+    const kpis=document.getElementById('tc-'+id+'-kpis');
+    if(kpis) kpis.innerHTML='';
+  });
+
+  // 7. Clear overview charts canvases
+  ['ch-sw-pie','ch-enc-bar'].forEach(id=>{
+    const canvas=document.getElementById(id);
+    if(canvas){ const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); }
+  });
+
+  // 8. Hide topbar actions, reset stepper
+  document.getElementById('topbar-actions').style.display='none';
+  document.querySelectorAll('.step-btn').forEach(b=>b.classList.remove('done','active'));
+  document.getElementById('stp-upload').classList.add('active');
+
+  // 9. Reset analyze button and summary text
+  document.getElementById('btn-analyze').disabled=true;
+  document.getElementById('upload-summary').textContent='Upload at least one module to continue';
+
+  // Reset FA class filter
+  window.faSelectedClasses = new Set();
+  window.faSelectedDevTypes = new Set();
+  window.faExemptDevTypes = new Set(['Network','Printer','Monitor']);
+
+  // 10. Navigate back to upload
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-upload').classList.add('active');
+}
+// Delegated click handler for data-drill cards
+document.addEventListener('click', function(e){
+  const card = e.target.closest('[data-drill]');
+  if(card){
+    const drill = card.getAttribute('data-drill');
+    if(drill) openDrill(drill);
+  }
+});
+</script>
+</body>
+</html>
